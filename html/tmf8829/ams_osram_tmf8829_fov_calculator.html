@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ams OSRAM - TMF8829 FoV Calculator</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            background-color: #fbf8f3;
+            color: #1a1a1a;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        .accent-gradient {
+            background: linear-gradient(135deg, #ff6b00 0%, #ff8c00 100%);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200 py-4 px-6 shadow-sm">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <!-- ams OSRAM Fixed Logo -->
+                <img id="logo" src="" alt="ams OSRAM" class="h-10 object-contain" />
+                <div class="h-6 w-px bg-gray-300 hidden sm:block"></div>
+                <h1 class="text-lg font-bold tracking-tight text-gray-800">TMF8829 FoV Calculator</h1>
+            </div>
+            <div class="text-xs bg-amber-500/10 text-[#ff6b00] font-bold py-1 px-3 rounded-full uppercase tracking-wider">
+                TMF8829 Sensor Simulator
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <!-- LEFT PANEL: Configuration Controls -->
+            <div class="lg:col-span-5 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between space-y-6">
+                <div>
+                    <h2 class="text-md font-bold text-gray-900 mb-4 flex items-center gap-2 uppercase tracking-wide">
+                        <i data-lucide="sliders" class="w-5 h-5 text-[#ff6b00]"></i>
+                        Sensor Settings
+                    </h2>
+                    
+                    <!-- Presets Dropdown -->
+                    <div class="mb-5">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Preset Configuration Mode</label>
+                        <select id="presetSelect" class="w-full bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#ff6b00] font-semibold text-gray-800">
+                            <option value="8x8">8 x 8 (64 depth-pixels)</option>
+                            <option value="16x16">16 x 16 (256 depth-pixels)</option>
+                            <option value="32x32">32 x 32 (1,024 depth-pixels)</option>
+                            <option value="48x32">48 x 32 (1,536 depth-pixels)</option>
+                        </select>
+                    </div>
+
+                    <!-- Custom inputs (Active depth pixels in X and Y) -->
+                    <div class="grid grid-cols-2 gap-4 mb-5">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Active Depth Pixels in X</label>
+                            <div class="relative">
+                                <input type="number" step="any" id="entered_x_value" class="w-full bg-gray-50 border border-gray-300 rounded-xl pl-4 pr-16 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#ff6b00] font-bold text-gray-800" value="1" />
+                                <span id="max_x_label" class="absolute right-3 top-3.5 text-[10px] font-bold text-gray-400">max: 8</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Active Depth Pixels in Y</label>
+                            <div class="relative">
+                                <input type="number" step="any" id="entered_y_value" class="w-full bg-gray-50 border border-gray-300 rounded-xl pl-4 pr-16 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#ff6b00] font-bold text-gray-800" value="1" />
+                                <span id="max_y_label" class="absolute right-3 top-3.5 text-[10px] font-bold text-gray-400">max: 8</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Target distance -->
+                    <div class="mb-6">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Target Distance</label>
+                        <div class="relative">
+                            <input type="number" step="any" id="entered_dist_value" class="w-full bg-gray-50 border border-gray-300 rounded-xl pl-4 pr-16 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#ff6b00] font-bold text-gray-800" value="100" />
+                            <span class="absolute right-4 top-3 text-sm font-bold text-gray-500">mm</span>
+                        </div>
+                    </div>
+
+                    <!-- Inline warning message area -->
+                    <div id="validationWarning" class="hidden bg-rose-50 text-rose-700 p-4 rounded-xl text-sm border border-rose-100 flex items-center gap-3">
+                        <i data-lucide="alert-triangle" class="w-5 h-5 flex-shrink-0 text-rose-500"></i>
+                        <span id="warningMessage"></span>
+                    </div>
+                </div>
+
+                <!-- Control Buttons -->
+                <div class="pt-4 border-t border-gray-100">
+                    <button id="resetBtn" class="w-full accent-gradient hover:opacity-90 text-white font-bold py-3.5 px-4 rounded-xl transition duration-150 text-xs shadow-md shadow-orange-500/10 flex items-center justify-center gap-2">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                        Reset Parameters
+                    </button>
+                </div>
+            </div>
+
+            <!-- RIGHT PANEL: Output Details and Live Interactive Visualizer -->
+            <div class="lg:col-span-7 space-y-6">
+                
+                <!-- Computed Results Grid -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-md font-bold text-gray-900 flex items-center gap-2 uppercase tracking-wide">
+                            <i data-lucide="calculator" class="w-5 h-5 text-[#ff6b00]"></i>
+                            Calculated Values
+                        </h2>
+                        <span class="text-xs text-gray-400 font-semibold italic">approximations</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <!-- Left Column Output -->
+                        <div class="space-y-3.5">
+                            <h3 class="text-[11px] font-bold text-gray-400 uppercase tracking-widest border-b pb-1">FoV Characteristics</h3>
+                            
+                            <div class="flex justify-between items-center bg-gray-50/70 p-3 rounded-xl border border-gray-100">
+                                <span class="text-xs font-semibold text-gray-600">Active Area Diagonal FoV</span>
+                                <span class="text-sm font-bold text-gray-900"><span id="calc_diag_value">-</span>°</span>
+                            </div>
+                            <div class="flex justify-between items-center bg-gray-50/70 p-3 rounded-xl border border-gray-100">
+                                <span class="text-xs font-semibold text-gray-600">Full Sensor Diagonal FoV</span>
+                                <span class="text-sm font-bold text-gray-900"><span id="calc_full_diag_value">-</span>°</span>
+                            </div>
+                            <div class="flex justify-between items-center bg-gray-50/70 p-3 rounded-xl border border-gray-100">
+                                <span class="text-xs font-semibold text-gray-600">Active Area FoV X</span>
+                                <span class="text-sm font-bold text-gray-900"><span id="calc_x_fov_full_value">-</span>°</span>
+                            </div>
+                            <div class="flex justify-between items-center bg-gray-50/70 p-3 rounded-xl border border-gray-100">
+                                <span class="text-xs font-semibold text-gray-600">Active Area FoV Y</span>
+                                <span class="text-sm font-bold text-gray-900"><span id="calc_y_fov_full_value">-</span>°</span>
+                            </div>
+                        </div>
+
+                        <!-- Right Column Output -->
+                        <div class="space-y-3.5">
+                            <h3 class="text-[11px] font-bold text-gray-400 uppercase tracking-widest border-b pb-1">Projected Target Sizes</h3>
+                            
+                            <div class="flex justify-between items-center bg-orange-50/40 p-3 rounded-xl border border-orange-100/60">
+                                <span class="text-xs font-semibold text-orange-950">Active Area Size X</span>
+                                <span class="text-sm font-extrabold text-orange-600"><span id="calc_x_zone_size_value">-</span> mm</span>
+                            </div>
+                            <div class="flex justify-between items-center bg-orange-50/40 p-3 rounded-xl border border-orange-100/60">
+                                <span class="text-xs font-semibold text-orange-950">Active Area Size Y</span>
+                                <span class="text-sm font-extrabold text-orange-600"><span id="calc_y_zone_size_value">-</span> mm</span>
+                            </div>
+                            <div class="flex justify-between items-center bg-gray-50/70 p-3 rounded-xl border border-gray-100">
+                                <span class="text-xs font-semibold text-gray-600">Full Projected Size X</span>
+                                <span class="text-sm font-bold text-gray-900"><span id="calc_x_size_full_value">-</span> mm</span>
+                            </div>
+                            <div class="flex justify-between items-center bg-gray-50/70 p-3 rounded-xl border border-gray-100">
+                                <span class="text-xs font-semibold text-gray-600">Full Projected Size Y</span>
+                                <span class="text-sm font-bold text-gray-900"><span id="calc_y_size_full_value">-</span> mm</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Single Depth-Pixel Metrics -->
+                    <div class="grid grid-cols-2 gap-4 mt-5 pt-4 border-t border-gray-100">
+                        <div class="bg-gray-50 p-3 rounded-xl text-center">
+                            <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Single Depth-Pixel Size X</div>
+                            <div class="text-xs font-bold text-gray-800"><span id="calc_x_spad_size">-</span> mm</div>
+                            <div class="text-[10px] text-gray-400 mt-0.5">FoV: <span id="calc_x_fov_spad_value">-</span>°</div>
+                        </div>
+                        <div class="bg-gray-50 p-3 rounded-xl text-center">
+                            <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Single Depth-Pixel Size Y</div>
+                            <div class="text-xs font-bold text-gray-800"><span id="calc_y_spad_size">-</span> mm</div>
+                            <div class="text-[10px] text-gray-400 mt-0.5">FoV: <span id="calc_y_fov_spad_value">-</span>°</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Matrix Visualizer Canvas -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
+                        <h2 class="text-md font-bold text-gray-900 flex items-center gap-2 uppercase tracking-wide">
+                            <i data-lucide="layout-grid" class="w-5 h-5 text-[#ff6b00]"></i>
+                            SPAD Matrix Projection Map
+                        </h2>
+                        <div class="flex gap-4 text-xs font-semibold text-gray-500">
+                            <span class="flex items-center gap-1.5">
+                                <span class="w-2.5 h-2.5 rounded-sm bg-[#ff6b00] block"></span>
+                                Active Subzone
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="relative w-full aspect-video sm:aspect-[2/1] bg-slate-900 rounded-2xl overflow-hidden p-4">
+                        <canvas id="visualizerCanvas" class="w-full h-full block"></canvas>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Info Modal -->
+    <div id="customModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 border border-gray-100 transform transition-all">
+            <div class="flex items-start gap-4">
+                <div class="p-3 bg-rose-50 text-rose-600 rounded-full">
+                    <i data-lucide="shield-alert" class="w-6 h-6"></i>
+                </div>
+                <div class="flex-grow">
+                    <h3 class="text-lg font-bold text-gray-950 mb-2">Invalid Inputs</h3>
+                    <p id="customModalBody" class="text-sm text-gray-600 leading-relaxed"></p>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end">
+                <button id="customModalClose" class="bg-[#ff6b00] hover:bg-[#e05e00] text-white font-bold px-6 py-2.5 rounded-xl text-sm transition">
+                    Dismiss
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 py-6 px-6 text-center text-sm text-gray-500">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+            <span>&copy; ams OSRAM AG. All rights reserved.</span>
+            <div class="flex gap-4">
+                <a href="#" class="hover:text-amber-500 font-medium">Full License (MIT)</a>
+                <span class="text-gray-300">|</span>
+                <span class="font-medium text-gray-700">TMF8829 FoV Calculator v2.0</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Script Execution Block -->
+    <script>
+        // DOM Elements
+        const presetSelect = document.getElementById('presetSelect');
+        const inputX = document.getElementById('entered_x_value');
+        const inputY = document.getElementById('entered_y_value');
+        const inputDist = document.getElementById('entered_dist_value');
+        const warningBox = document.getElementById('validationWarning');
+        const warningMsg = document.getElementById('warningMessage');
+        const resetBtn = document.getElementById('resetBtn');
+        const visualizerCanvas = document.getElementById('visualizerCanvas');
+        const canvasCtx = visualizerCanvas.getContext('2d');
+
+        const maxXLabel = document.getElementById('max_x_label');
+        const maxYLabel = document.getElementById('max_y_label');
+
+        // Modal elements
+        const customModal = document.getElementById('customModal');
+        const customModalBody = document.getElementById('customModalBody');
+        const customModalClose = document.getElementById('customModalClose');
+
+        // ams OSRAM logo string - Fixed with a functional base64 representation
+        const logoBase64 = "PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjUwIiB2aWV3Qm94PSIwIDAgMjAwIDUwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjx0ZXh0IHg9IjUiIHk9IjM1IiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjQiIGZpbGw9IiMxYTFhMWEiIGZvbnQtd2VpZ2h0PSJib2xkIj5hbXMgT1NSQU08L3RleHQ+PC9zdmc+";
+
+        // Constants matching the physical dimensions of the TMF8829 sensor
+        const SPAD_X_MAX = 48;
+        const SPAD_Y_MAX = 32;
+        const SPAD_X_SIZE = 15;      // micrometers
+        const SPAD_Y_SIZE = 16.875;  // micrometers
+        const FOCAL_DISTANCE = 540;  // micrometers
+
+        // Safe custom Modal launcher
+        function triggerModal(msg) {
+            customModalBody.textContent = msg;
+            customModal.classList.remove('hidden');
+        }
+
+        // Hide custom Modal
+        customModalClose.addEventListener('click', () => {
+            customModal.classList.add('hidden');
+        });
+
+        // Trigger warning on inputs if live typing is temporarily outside bounds
+        function showWarning(msg) {
+            warningMsg.textContent = msg;
+            warningBox.classList.remove('hidden');
+        }
+
+        function clearWarning() {
+            warningBox.classList.add('hidden');
+        }
+
+        // Get limits of active depth pixels based on resolution
+        function getPresetLimits() {
+            const val = presetSelect.value;
+            if (val === '8x8') return { x: 8, y: 8 };
+            if (val === '16x16') return { x: 16, y: 16 };
+            if (val === '32x32') return { x: 32, y: 32 };
+            if (val === '48x32') return { x: 48, y: 32 };
+            return { x: 8, y: 8 };
+        }
+
+        function updatePresetLimitsUI() {
+            const limits = getPresetLimits();
+            maxXLabel.textContent = `max: ${limits.x}`;
+            maxYLabel.textContent = `max: ${limits.y}`;
+        }
+
+        // Handle Presets dropdown matching original python script
+        presetSelect.addEventListener('change', () => {
+            const limits = getPresetLimits();
+            
+            // Retain values if they are within limits, clamp only if they exceed
+            let currentX = parseFloat(inputX.value);
+            let currentY = parseFloat(inputY.value);
+            
+            if (isNaN(currentX) || currentX < 1) {
+                inputX.value = 1;
+            } else if (currentX > limits.x) {
+                inputX.value = limits.x;
+            }
+            
+            if (isNaN(currentY) || currentY < 1) {
+                inputY.value = 1;
+            } else if (currentY > limits.y) {
+                inputY.value = limits.y;
+            }
+
+            updatePresetLimitsUI();
+            performCalculations();
+        });
+
+        // Core Math & Calculation
+        function performCalculations() {
+            const activeDpX = parseFloat(inputX.value);
+            const activeDpY = parseFloat(inputY.value);
+            const dist = parseFloat(inputDist.value);
+            const limits = getPresetLimits();
+
+            // Real-time validations
+            if (isNaN(activeDpX) || isNaN(activeDpY) || isNaN(dist)) {
+                showWarning("Waiting for numeric entries...");
+                return;
+            }
+            if (activeDpX <= 0 || activeDpY <= 0 || dist <= 0) {
+                showWarning("Inputs must be strictly positive numeric dimensions.");
+                return;
+            }
+            if (activeDpX > limits.x || activeDpY > limits.y) {
+                showWarning(`Limits Exceeded. Max active depth pixels in X is ${limits.x}, in Y is ${limits.y} for the current preset.`);
+                return;
+            }
+            clearWarning();
+
+            // Equations mapping depth pixels to the physical sensor array
+            const pi = Math.PI;
+
+            // Calculate SPAD size of a single depth-pixel based on selected preset
+            const Sx = SPAD_X_MAX / limits.x; // physical SPADs in X per depth-pixel
+            const Sy = SPAD_Y_MAX / limits.y; // physical SPADs in Y per depth-pixel
+
+            // Convert selected active depth pixels to equivalent SPAD span
+            const x_spad_active = activeDpX * Sx;
+            const y_spad_active = activeDpY * Sy;
+
+            // Calculated active area FoV properties (using active SPAD span)
+            const res_calc_diag_value = (Math.atan(Math.sqrt(Math.pow(x_spad_active * SPAD_X_SIZE, 2) + Math.pow(y_spad_active * SPAD_Y_SIZE, 2)) / FOCAL_DISTANCE / 2) * 2 / pi * 180);
+            const res_full_diag_value = (Math.atan(Math.sqrt(Math.pow(SPAD_X_MAX * SPAD_X_SIZE, 2) + Math.pow(SPAD_Y_MAX * SPAD_Y_SIZE, 2)) / FOCAL_DISTANCE / 2) * 2 / pi * 180);
+
+            // FoV of individual physical SPADs
+            const res_calc_x_fov_spad_value = (2 * Math.atan(SPAD_X_SIZE / 2 / FOCAL_DISTANCE) / pi * 180);
+            const res_calc_y_fov_spad_value = (2 * Math.atan(SPAD_Y_SIZE / 2 / FOCAL_DISTANCE) / pi * 180);
+
+            // FoV of individual depth-pixels
+            const res_calc_x_fov_dp_value = (2 * Math.atan(Sx * SPAD_X_SIZE / 2 / FOCAL_DISTANCE) / pi * 180);
+            const res_calc_y_fov_dp_value = (2 * Math.atan(Sy * SPAD_Y_SIZE / 2 / FOCAL_DISTANCE) / pi * 180);
+
+            // Single Depth-Pixel physical size projected at target distance
+            const res_calc_x_dp_size = (Sx * 2 * dist * Math.tan((res_calc_x_fov_spad_value / 180 * pi) / 2));
+            const res_calc_y_dp_size = (Sy * 2 * dist * Math.tan((res_calc_y_fov_spad_value / 180 * pi) / 2));
+
+            // Overall active area FoV
+            const res_calc_x_fov_full_value = (2 * Math.atan(x_spad_active * SPAD_X_SIZE / 2 / FOCAL_DISTANCE) / pi * 180);
+            const res_calc_y_fov_full_value = (2 * Math.atan(y_spad_active * SPAD_Y_SIZE / 2 / FOCAL_DISTANCE) / pi * 180);
+
+            // Projected Sizes
+            const res_calc_x_size_full_value = (SPAD_X_MAX * 2 * dist * Math.tan((res_calc_x_fov_spad_value / 180 * pi) / 2));
+            const res_calc_y_size_full_value = (SPAD_Y_MAX * 2 * dist * Math.tan((res_calc_y_fov_spad_value / 180 * pi) / 2));
+
+            // Selected active zone projected size
+            const res_calc_x_zone_size_value = (x_spad_active * 2 * dist * Math.tan((res_calc_x_fov_spad_value / 180 * pi) / 2));
+            const res_calc_y_zone_size_value = (y_spad_active * 2 * dist * Math.tan((res_calc_y_fov_spad_value / 180 * pi) / 2));
+
+            // Populate calculations into DOM fields
+            document.getElementById('calc_diag_value').textContent = res_calc_diag_value.toFixed(1);
+            document.getElementById('calc_full_diag_value').textContent = res_full_diag_value.toFixed(1);
+            
+            // Single depth-pixel characteristics
+            document.getElementById('calc_x_fov_spad_value').textContent = res_calc_x_fov_dp_value.toFixed(1);
+            document.getElementById('calc_y_fov_spad_value').textContent = res_calc_y_fov_dp_value.toFixed(1);
+            document.getElementById('calc_x_spad_size').textContent = res_calc_x_dp_size.toFixed(1);
+            document.getElementById('calc_y_spad_size').textContent = res_calc_y_dp_size.toFixed(1);
+            
+            // Active area characteristics
+            document.getElementById('calc_x_fov_full_value').textContent = res_calc_x_fov_full_value.toFixed(1);
+            document.getElementById('calc_y_fov_full_value').textContent = res_calc_y_fov_full_value.toFixed(1);
+            
+            // Full sensor projection metrics
+            document.getElementById('calc_x_size_full_value').textContent = Number(res_calc_x_size_full_value.toFixed(1)).toLocaleString();
+            document.getElementById('calc_y_size_full_value').textContent = Number(res_calc_y_size_full_value.toFixed(1)).toLocaleString();
+            
+            // Active area target sizes
+            document.getElementById('calc_x_zone_size_value').textContent = Number(res_calc_x_zone_size_value.toFixed(1)).toLocaleString();
+            document.getElementById('calc_y_zone_size_value').textContent = Number(res_calc_y_zone_size_value.toFixed(1)).toLocaleString();
+
+            // Fire Canvas Visualizer Render (using translated active SPAD dimensions)
+            renderVisualization(x_spad_active, y_spad_active);
+        }
+
+        // Reset elements
+        resetBtn.addEventListener('click', () => {
+            presetSelect.value = '8x8';
+            inputX.value = "1";
+            inputY.value = "1";
+            inputDist.value = "100";
+            updatePresetLimitsUI();
+            clearWarning();
+            performCalculations();
+        });
+
+        // Setup real-time listeners
+        [inputX, inputY, inputDist].forEach(el => {
+            el.addEventListener('input', performCalculations);
+        });
+
+        // Canvas Setup & Render functions
+        function renderVisualization(activeX, activeY) {
+            // Fix canvas resolution for Retina screens
+            const width = visualizerCanvas.clientWidth;
+            const height = visualizerCanvas.clientHeight;
+            if (visualizerCanvas.width !== width || visualizerCanvas.height !== height) {
+                visualizerCanvas.width = width;
+                visualizerCanvas.height = height;
+            }
+
+            // Clear Background
+            canvasCtx.fillStyle = '#0f172a'; // Slate-900 background
+            canvasCtx.fillRect(0, 0, width, height);
+
+            // Layout specs (Split view: Left = 48x32 SPAD grid, Right = Target Cone Side-View)
+            const padding = 20;
+            const leftWidth = (width / 2) - (padding * 2);
+            const rightWidth = (width / 2) - (padding * 2);
+            const paneHeight = height - (padding * 2);
+
+            // 1. DRAW SPAD MATRIX (Left Panel)
+            const gridCols = SPAD_X_MAX;
+            const gridRows = SPAD_Y_MAX;
+            const cellW = leftWidth / gridCols;
+            const cellH = paneHeight / gridRows;
+
+            // Offset to center the grid inside the left pane
+            const gridXOffset = padding;
+            const gridYOffset = padding;
+
+            for (let r = 0; r < gridRows; r++) {
+                for (let c = 0; c < gridCols; c++) {
+                    const cx = gridXOffset + (c * cellW);
+                    const cy = gridYOffset + (r * cellH);
+
+                    // Determine if this cell is inside the active subzone (centered)
+                    const halfActiveX = activeX / 2;
+                    const halfActiveY = activeY / 2;
+                    const centerCol = gridCols / 2;
+                    const centerRow = gridRows / 2;
+
+                    const insideActive = (
+                        c >= (centerCol - halfActiveX) && c < (centerCol + halfActiveX) &&
+                        r >= (centerRow - halfActiveY) && r < (centerRow + halfActiveY)
+                    );
+
+                    if (insideActive) {
+                        canvasCtx.fillStyle = 'rgba(255, 107, 0, 0.85)';
+                        canvasCtx.strokeStyle = '#ff6b00';
+                    } else {
+                        canvasCtx.fillStyle = '#334155'; // Slate 700
+                        canvasCtx.strokeStyle = '#1e293b'; // Slate 800
+                    }
+
+                    canvasCtx.fillRect(cx, cy, cellW - 0.5, cellH - 0.5);
+                    canvasCtx.strokeRect(cx, cy, cellW - 0.5, cellH - 0.5);
+                }
+            }
+
+            // Draw left label
+            canvasCtx.fillStyle = '#94a3b8';
+            canvasCtx.font = '10px sans-serif';
+            canvasCtx.fillText("48 x 32 Physical SPAD Array", gridXOffset, height - 5);
+
+            // 2. DRAW PROJECTION BEAM CONE (Right Panel)
+            const projXOffset = (width / 2) + padding;
+            const projYOffset = padding;
+
+            // Simple Side profile representation
+            // Draw ToF emitter point
+            const emitterX = projXOffset + 10;
+            const emitterY = height / 2;
+
+            // Target plane position
+            const wallX = projXOffset + rightWidth - 20;
+            const wallHeight = paneHeight - 20;
+
+            // Active / full beam angle expansion representation
+            const actYRatio = activeY / SPAD_Y_MAX; // normalized relative to maximum height
+            const activeWallHeight = wallHeight * actYRatio;
+
+            // Draw full projection cone (light white/blue shading)
+            canvasCtx.beginPath();
+            canvasCtx.moveTo(emitterX, emitterY);
+            canvasCtx.lineTo(wallX, emitterY - (wallHeight / 2));
+            canvasCtx.lineTo(wallX, emitterY + (wallHeight / 2));
+            canvasCtx.closePath();
+            canvasCtx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+            canvasCtx.fill();
+            canvasCtx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+            canvasCtx.lineWidth = 1;
+            canvasCtx.stroke();
+
+            // Draw active projection subzone (Orange shading)
+            canvasCtx.beginPath();
+            canvasCtx.moveTo(emitterX, emitterY);
+            canvasCtx.lineTo(wallX, emitterY - (activeWallHeight / 2));
+            canvasCtx.lineTo(wallX, emitterY + (activeWallHeight / 2));
+            canvasCtx.closePath();
+            canvasCtx.fillStyle = 'rgba(255, 107, 0, 0.15)';
+            canvasCtx.fill();
+            canvasCtx.strokeStyle = '#ff6b00';
+            canvasCtx.lineWidth = 1.5;
+            canvasCtx.stroke();
+
+            // Emitter target line indicators
+            canvasCtx.setLineDash([3, 3]);
+            canvasCtx.beginPath();
+            canvasCtx.moveTo(emitterX, emitterY);
+            canvasCtx.lineTo(wallX, emitterY);
+            canvasCtx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            canvasCtx.stroke();
+            canvasCtx.setLineDash([]); // reset
+
+            // Emitter device symbol
+            canvasCtx.fillStyle = '#ff6b00';
+            canvasCtx.beginPath();
+            canvasCtx.arc(emitterX, emitterY, 6, 0, Math.PI * 2);
+            canvasCtx.fill();
+            canvasCtx.fillStyle = '#ffffff';
+            canvasCtx.font = 'bold 9px sans-serif';
+            canvasCtx.fillText("TMF8829", emitterX - 12, emitterY - 10);
+
+            // Labels for projection panel
+            canvasCtx.fillStyle = '#ffffff';
+            canvasCtx.font = '10px sans-serif';
+            canvasCtx.fillText("Distance Cone Projection", projXOffset, height - 5);
+        }
+
+        // Initialize logo to the image node
+        window.addEventListener('load', () => {
+            const logoEl = document.getElementById('logo');
+            if (logoEl) {
+                // Set to SVG data URI
+                logoEl.src = "data:image/svg+xml;base64," + logoBase64;
+            }
+            // Sync UI limits
+            updatePresetLimitsUI();
+            // Trigger calculation immediately to avoid blank display on load
+            performCalculations();
+            // Initialize Lucide Icons again in case elements rendered late
+            lucide.createIcons();
+        });
+
+        // Listen for canvas responsive resize safely
+        window.addEventListener('resize', performCalculations);
+    </script>
+</body>
+</html>
