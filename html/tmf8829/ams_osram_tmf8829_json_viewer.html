@@ -3,407 +3,154 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TMF8829 Log Viewer & JSON.GZ Visualizer 1v0</title>
-
-    <!-- Tailwind CSS for UI styling -->
+    <title>TMF8829 Log Viewer & CSV Exporter 2v0</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- Pako library for client-side GZIP decompression -->
+    <!-- Pako library for client-side gzip decompression -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
-
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
     <style>
-        /* Custom scrollbar and grid styling */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
         }
-        ::-webkit-scrollbar-track {
+        .custom-scrollbar::-webkit-scrollbar-track {
             background: #f1f1f1;
             border-radius: 4px;
         }
-        ::-webkit-scrollbar-thumb {
+        .custom-scrollbar::-webkit-scrollbar-thumb {
             background: #cbd5e1;
             border-radius: 4px;
         }
-        ::-webkit-scrollbar-thumb:hover {
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
             background: #94a3b8;
         }
-
-        .grid-container {
-            overflow: auto;
-            border: 2px solid #334155;
-            border-radius: 8px;
-            max-height: 80vh;
-            background-color: #f8fafc;
-        }
-
-        .grid-layout {
-            display: grid;
-            gap: 4px;
-            padding: 10px;
-            background-color: #ffffff;
-        }
-
-        .cell {
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            padding: 6px 8px;
-            min-width: 95px;
-            min-height: 70px;
-            background-color: #fafafa;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            font-family: monospace;
-            transition: border-color 0.15s, shadow 0.15s;
-        }
-        .cell:hover {
-            border-color: #3b82f6;
-            box-shadow: 0 2px 6px rgba(59, 130, 246, 0.15);
-        }
-
-        .cell-header {
-            position: absolute;
-            top: 2px;
-            right: 4px;
-            font-size: 10px;
-            color: #64748b;
-            font-weight: bold;
-        }
-
-        .cell-data {
-            font-size: 11px;
-            line-height: 1.35;
-            word-wrap: break-word;
-        }
-
-        .peak {
-            padding: 2px 4px;
-            border-radius: 4px;
-            margin: 2px 0;
-            white-space: pre;
-            font-size: 10.5px;
-        }
-
-        /* Peak SNR color coding matching original viewer */
-        .peak-high {
-            color: #064e3b;
-            background-color: #a7f3d0;
-            border-left: 3px solid #059669;
-        }
-
-        .peak-medium {
-            color: #78350f;
-            background-color: #fef08a;
-            border-left: 3px solid #d97706;
-        }
-
-        .peak-low {
-            color: #7f1d1d;
-            background-color: #fecdd3;
-            border-left: 3px solid #e11d48;
-        }
-
-        .peak-none {
-            color: #64748b;
-            background-color: #f1f5f9;
-        }
-
-        .no-data {
-            color: #94a3b8;
-            font-style: italic;
-            font-size: 11px;
-            text-align: center;
-        }
-
-        .legend-color {
-            width: 32px;
-            height: 20px;
-            border-radius: 4px;
-            padding: 1px 3px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            font-size: 10px;
-        }
-
-        .histo-container {
-            margin-top: 15px;
-            border: 2px solid #334155;
-            border-radius: 8px;
-            padding: 12px;
-            background-color: #ffffff;
-        }
-
-        .histo-grid {
-            display: grid;
-            gap: 6px;
-            overflow: auto;
-            max-height: 700px;
-            padding: 6px;
-        }
-
-        .histo-cell {
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            padding: 6px;
-            background-color: #f8fafc;
-            cursor: pointer;
-            transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
-        }
-
-        .histo-cell:hover {
-            transform: scale(1.03);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-            border-color: #10b981;
-        }
-
-        .histo-cell-header {
-            font-size: 10px;
-            color: #475569;
-            margin-bottom: 4px;
-            font-weight: bold;
-        }
-
-        .histo-chart {
-            width: 120px;
-            height: 60px;
-        }
-
-        /* Dropzone pulse animation */
-        .drag-active {
-            border-color: #3b82f6 !important;
-            background-color: #eff6ff !important;
-        }
+        .peak-high { color: #065f46; background-color: #d1fae5; border-color: #a7f3d0; }
+        .peak-medium { color: #92400e; background-color: #fef3c7; border-color: #fde68a; }
+        .peak-low { color: #991b1b; background-color: #fee2e2; border-color: #fca5a5; }
+        .peak-none { color: #475569; background-color: #f1f5f9; border-color: #e2e8f0; }
     </style>
 </head>
+<body class="bg-slate-100 min-h-screen text-slate-800 font-sans flex flex-col">
 
-<body class="bg-slate-100 text-slate-800 font-sans min-h-screen p-3 md:p-6">
-    <div class="max-w-[1500px] mx-auto bg-white rounded-xl shadow-lg p-4 md:p-6 border border-slate-200">
-        
-        <!-- Header & File Loader Area -->
-        <header class="mb-6 pb-4 border-b border-slate-200">
-            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
-                <div>
-                    <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                        <i class="fa-solid fa-microchip text-blue-600"></i>
-                        TMF8829 Log Viewer & JSON.GZ Visualizer 1v0
-                    </h1>
-                    <p class="text-xs text-slate-500 mt-1">
-                        Upload `.json.gz` or `.json` logfiles directly to inspect multi-zone ToF range metrics, histograms, and frame details.
-                    </p>
-                </div>
-
-                <!-- Action Controls (Select Log File) -->
-                <div class="flex flex-wrap items-center gap-2">
-                    <label class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-md shadow cursor-pointer transition flex items-center gap-1.5">
-                        <i class="fa-solid fa-file-arrow-up"></i> Select Log File (.json / .json.gz)
-                        <input type="file" id="fileInput" accept=".json,.gz,.json.gz" class="hidden" onchange="handleFileSelect(event)">
-                    </label>
-                </div>
-            </div>
-
-            <!-- Drag and drop zone -->
-            <div id="dropZone" class="mt-4 border-2 border-dashed border-slate-300 hover:border-blue-400 bg-slate-50 rounded-lg p-4 text-center transition cursor-pointer" onclick="document.getElementById('fileInput').click()">
-                <div class="flex flex-col items-center justify-center gap-1">
-                    <i class="fa-solid fa-cloud-arrow-up text-2xl text-slate-400"></i>
-                    <p class="text-xs font-medium text-slate-600">
-                        Drag and drop your <span class="font-bold text-blue-600">.json</span> or <span class="font-bold text-blue-600">.json.gz</span> log file here
-                    </p>
-                    <p id="fileNameDisplay" class="text-xs font-mono text-emerald-600 font-semibold mt-1 hidden"></p>
-                </div>
-            </div>
-        </header>
-
-        <!-- Version Information Banner -->
-        <div class="bg-amber-50 border border-amber-200 rounded-md p-2.5 mb-4 text-amber-900 text-xs font-mono flex items-center justify-between shadow-sm" id="versionInfo">
-            <span><i class="fa-solid fa-circle-info mr-1.5"></i> Version Information: Waiting for log file...</span>
-        </div>
-
-        <!-- TOP CONTROL TOOLBAR -->
-        <div class="bg-slate-100 p-3 rounded-lg border border-slate-200 mb-4 shadow-sm">
-            <div class="info bg-blue-50 border border-blue-200 p-2 rounded-md mb-3 text-blue-800 text-xs font-mono flex flex-wrap items-center gap-x-4 gap-y-1" id="frameDetails">
-                Waiting for dataset initialization...
-            </div>
-
-            <!-- Control Row Top -->
-            <div class="flex flex-wrap items-center justify-between gap-3 text-xs">
-                <div class="flex flex-wrap items-center gap-3">
-                    <label class="flex items-center gap-1.5 cursor-pointer font-medium text-slate-700">
-                        <input type="checkbox" id="showNoise" class="rounded text-blue-600 focus:ring-blue-500">
-                        Noise
-                    </label>
-
-                    <label class="flex items-center gap-1.5 cursor-pointer font-medium text-slate-700">
-                        <input type="checkbox" id="showXtalk" class="rounded text-blue-600 focus:ring-blue-500">
-                        XTalk
-                    </label>
-
-                    <div class="flex flex-wrap items-center gap-2 border-l border-r border-slate-300 px-2 py-0.5">
-                        <label class="flex items-center gap-1 cursor-pointer font-bold text-slate-800">
-                            <input type="checkbox" id="showPeaks" checked class="rounded text-blue-600 focus:ring-blue-500">
-                            Peaks
-                        </label>
-                        <select id="numPeaksSelect" class="bg-white border border-slate-300 rounded px-1.5 py-0.5 text-xs text-slate-700 font-medium focus:outline-none focus:border-blue-500">
-                        </select>
-
-                        <label class="flex items-center gap-1 cursor-pointer font-medium text-slate-700 ml-1">
-                            <input type="checkbox" id="showDistance" checked class="rounded text-blue-600 focus:ring-blue-500">
-                            Distance
-                        </label>
-                        <label class="flex items-center gap-1 cursor-pointer font-medium text-slate-700">
-                            <input type="checkbox" id="showSNR" checked class="rounded text-blue-600 focus:ring-blue-500">
-                            SNR
-                        </label>
-                        <label class="flex items-center gap-1 cursor-pointer font-medium text-slate-700">
-                            <input type="checkbox" id="showSignal" class="rounded text-blue-600 focus:ring-blue-500">
-                            Signal
-                        </label>
-                        <label class="flex items-center gap-1 cursor-pointer font-medium text-slate-700">
-                            <input type="checkbox" id="showXYZ" class="rounded text-blue-600 focus:ring-blue-500">
-                            XYZ
-                        </label>
-                    </div>
-
-                    <div class="flex items-center gap-1.5">
-                        <label class="flex items-center gap-1 cursor-pointer font-medium text-slate-700">
-                            <input type="checkbox" id="showHistogram" disabled class="rounded text-blue-600 focus:ring-blue-500 disabled:opacity-50">
-                            Histogram
-                        </label>
-                        <select id="histoTypeSelect" disabled class="bg-white border border-slate-300 rounded px-1.5 py-0.5 text-xs text-slate-700 font-medium focus:outline-none focus:border-blue-500 disabled:opacity-50">
-                            <option value="mp">MP</option>
-                            <option value="ref">Ref</option>
-                            <option value="mp_ha">MP_HA</option>
-                            <option value="ref_ha">Ref_HA</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Frame Navigation Top -->
-                <div class="flex items-center gap-2 w-full lg:w-auto justify-end">
-                    <button id="playBtn" onclick="togglePlay()" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded font-bold shadow text-xs flex items-center gap-1">
-                        <i class="fa-solid fa-play" id="playIcon"></i> <span id="playText">Play</span>
-                    </button>
-                    <input type="range" id="frameSlider" min="0" max="0" value="0" step="1" class="w-36 md:w-48 accent-blue-600">
-                    <span id="frameInfo" class="font-mono text-xs text-slate-600 font-semibold min-w-[60px] text-center">0 / 0</span>
-                    <button id="prevBtn" onclick="prevFrame()" class="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-bold text-xs flex items-center gap-1">
-                        ◀ Prev
-                    </button>
-                    <button id="nextBtn" onclick="nextFrame()" class="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-bold text-xs flex items-center gap-1">
-                        Next ▶
-                    </button>
-                </div>
+    <!-- Top Navigation Header -->
+    <header class="bg-slate-900 text-white shadow-md py-3 px-6 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center space-x-3">
+            <i class="fa-solid fa-microchip text-emerald-400 text-2xl"></i>
+            <div>
+                <h1 class="text-lg font-bold tracking-wide">TMF8829 Log Viewer & Converter 2v0</h1>
+                <p class="text-xs text-slate-400">Interactive ToF Sensor Data Analysis & CSV Exporter</p>
             </div>
         </div>
 
-        <!-- MAIN GRID DISPLAY AREA -->
-        <div class="grid-container">
-            <div class="grid-layout" id="dataGrid"></div>
-        </div>
+        <div class="flex items-center space-x-3">
+            <!-- Upload Buttons -->
+            <label class="cursor-pointer bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors flex items-center shadow-sm">
+                <i class="fa-solid fa-file-arrow-up mr-2 text-sm"></i>
+                <span>Open JSON / JSON.GZ</span>
+                <input type="file" id="fileInput" accept=".json,.gz,.json.gz" class="hidden" />
+            </label>
 
-        <!-- HISTOGRAM GRID CONTAINER -->
-        <div class="histo-container" id="histoContainer" style="display: none;">
-            <div class="text-xs font-bold text-slate-700 mb-2 flex items-center gap-1.5">
-                <i class="fa-solid fa-chart-column text-emerald-600"></i> Sensor Histogram Spatial Grid (Click chart to enlarge)
-            </div>
-            <div class="histo-grid" id="histoGrid"></div>
-        </div>
-
-        <!-- BOTTOM CONTROL TOOLBAR (SYNCED) -->
-        <div class="bg-slate-100 p-3 rounded-lg border border-slate-200 mt-4 shadow-sm">
-            <div class="flex flex-wrap items-center justify-between gap-3 text-xs">
-                <div class="flex flex-wrap items-center gap-3">
-                    <label class="flex items-center gap-1.5 cursor-pointer font-medium text-slate-700">
-                        <input type="checkbox" id="showNoise2" class="rounded text-blue-600 focus:ring-blue-500">
-                        Noise
-                    </label>
-
-                    <label class="flex items-center gap-1.5 cursor-pointer font-medium text-slate-700">
-                        <input type="checkbox" id="showXtalk2" class="rounded text-blue-600 focus:ring-blue-500">
-                        XTalk
-                    </label>
-
-                    <div class="flex flex-wrap items-center gap-2 border-l border-r border-slate-300 px-2 py-0.5">
-                        <label class="flex items-center gap-1 cursor-pointer font-bold text-slate-800">
-                            <input type="checkbox" id="showPeaks2" checked class="rounded text-blue-600 focus:ring-blue-500">
-                            Peaks
-                        </label>
-                        <select id="numPeaksSelect2" class="bg-white border border-slate-300 rounded px-1.5 py-0.5 text-xs text-slate-700 font-medium focus:outline-none focus:border-blue-500">
-                        </select>
-
-                        <label class="flex items-center gap-1 cursor-pointer font-medium text-slate-700 ml-1">
-                            <input type="checkbox" id="showDistance2" checked class="rounded text-blue-600 focus:ring-blue-500">
-                            Distance
-                        </label>
-                        <label class="flex items-center gap-1 cursor-pointer font-medium text-slate-700">
-                            <input type="checkbox" id="showSNR2" checked class="rounded text-blue-600 focus:ring-blue-500">
-                            SNR
-                        </label>
-                        <label class="flex items-center gap-1 cursor-pointer font-medium text-slate-700">
-                            <input type="checkbox" id="showSignal2" class="rounded text-blue-600 focus:ring-blue-500">
-                            Signal
-                        </label>
-                        <label class="flex items-center gap-1 cursor-pointer font-medium text-slate-700">
-                            <input type="checkbox" id="showXYZ2" class="rounded text-blue-600 focus:ring-blue-500">
-                            XYZ
-                        </label>
-                    </div>
-
-                    <div class="flex items-center gap-1.5">
-                        <label class="flex items-center gap-1 cursor-pointer font-medium text-slate-700">
-                            <input type="checkbox" id="showHistogram2" disabled class="rounded text-blue-600 focus:ring-blue-500 disabled:opacity-50">
-                            Histogram
-                        </label>
-                        <select id="histoTypeSelect2" disabled class="bg-white border border-slate-300 rounded px-1.5 py-0.5 text-xs text-slate-700 font-medium focus:outline-none focus:border-blue-500 disabled:opacity-50">
-                            <option value="mp">MP</option>
-                            <option value="ref">Ref</option>
-                            <option value="mp_ha">MP_HA</option>
-                            <option value="ref_ha">Ref_HA</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Frame Navigation Bottom -->
-                <div class="flex items-center gap-2 w-full lg:w-auto justify-end">
-                    <input type="range" id="frameSlider2" min="0" max="0" value="0" step="1" class="w-36 md:w-48 accent-blue-600">
-                    <span id="frameInfo2" class="font-mono text-xs text-slate-600 font-semibold min-w-[60px] text-center">0 / 0</span>
-                    <button id="prevBtn2" onclick="prevFrame()" class="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-bold text-xs flex items-center gap-1">
-                        ◀ Prev
-                    </button>
-                    <button id="nextBtn2" onclick="nextFrame()" class="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-bold text-xs flex items-center gap-1">
-                        Next ▶
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- HISTOGRAM ENLARGED MODAL -->
-    <div id="histoModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 hidden justify-center items-center p-4">
-        <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[95vh] overflow-y-auto p-6 relative flex flex-col border border-slate-200">
-            <button onclick="closeModal()" class="absolute top-3 right-4 text-slate-400 hover:text-slate-800 text-2xl font-bold transition">
-                &times;
+            <!-- Export Full CSV Button -->
+            <button id="exportFullCsvBtn" disabled onclick="exportCSV(false)" class="disabled:opacity-40 disabled:cursor-not-allowed bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors flex items-center shadow-sm">
+                <i class="fa-solid fa-file-csv mr-2 text-sm"></i>
+                <span>Export Full CSV</span>
             </button>
-            <h2 id="modalTitle" class="text-lg font-bold text-slate-800 mb-4 pr-8 border-b pb-2 flex items-center gap-2">
-                <i class="fa-solid fa-chart-line text-blue-600"></i> Histogram Detail
-            </h2>
-            <div id="modalChart" class="w-full relative flex flex-col items-center justify-center"></div>
+
+            <!-- Export Current Frame CSV Button -->
+            <button id="exportFrameCsvBtn" disabled onclick="exportCSV(true)" class="disabled:opacity-40 disabled:cursor-not-allowed bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors flex items-center shadow-sm">
+                <i class="fa-solid fa-file-csv mr-2 text-sm"></i>
+                <span>Export Current Frame CSV</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-[1600px] w-full mx-auto p-4 flex flex-col gap-4">
+
+        <!-- File Upload Drag and Drop Zone (Visible when no data loaded) -->
+        <div id="dropZone" class="bg-white border-2 border-dashed border-slate-300 rounded-xl p-12 text-center shadow-sm transition-colors hover:border-emerald-500 cursor-pointer">
+            <div class="max-w-md mx-auto space-y-4">
+                <div class="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-2xl">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                </div>
+                <h2 class="text-xl font-bold text-slate-700">Drop your TMF8829 Log File Here</h2>
+                <p class="text-xs text-slate-500">Supports <span class="font-semibold text-slate-700">.json</span> and compressed <span class="font-semibold text-slate-700">.json.gz</span> files directly in browser.</p>
+                <div class="pt-2">
+                    <button onclick="document.getElementById('fileInput').click()" class="bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold px-5 py-2.5 rounded-lg shadow">
+                        Browse File
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- App Main Visualizer Workspace (Hidden until data is loaded) -->
+        <div id="visualizerApp" class="hidden flex-col gap-4">
+
+            <!-- System Info Bar -->
+            <div id="versionInfo" class="bg-amber-50 border border-amber-200 text-amber-900 rounded-lg py-2 px-4 text-xs flex flex-wrap items-center justify-between gap-2 shadow-sm font-medium">
+                <!-- Version details populated dynamically -->
+            </div>
+
+            <!-- Top Control Bar -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3 space-y-3">
+                <div id="frameDetails" class="bg-blue-50 border border-blue-100 rounded-lg p-2 text-xs text-blue-900 font-mono leading-relaxed flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                    <!-- Dynamic frame details -->
+                </div>
+
+                <!-- Synchronized Controls Block 1 -->
+                <div id="controlsGroup1"></div>
+            </div>
+
+            <!-- Central Data Visualizer Grid -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                <div class="grid-container overflow-auto max-h-[70vh] border border-slate-300 rounded-lg p-2 bg-slate-50 custom-scrollbar">
+                    <div id="dataGrid" class="grid gap-1.5 min-w-[600px]"></div>
+                </div>
+            </div>
+
+            <!-- Histogram Display Container -->
+            <div id="histoContainer" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                <div class="text-xs font-bold text-slate-700 mb-3 flex items-center justify-between">
+                    <span class="flex items-center gap-2">
+                        <i class="fa-solid fa-chart-column text-emerald-600"></i>
+                        <span>Histogram Data Grid</span>
+                    </span>
+                    <span class="text-slate-400 font-normal">Click any cell chart to enlarge</span>
+                </div>
+                <div id="histoGrid" class="grid gap-2 max-h-[600px] overflow-auto p-1 custom-scrollbar"></div>
+            </div>
+
+            <!-- Bottom Control Bar -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-3">
+                <!-- Synchronized Controls Block 2 -->
+                <div id="controlsGroup2"></div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal for Enlarged Histogram -->
+    <div id="histoModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[95vh] overflow-hidden flex flex-col relative border border-slate-200">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
+                <h3 id="modalTitle" class="text-base font-bold text-slate-800"></h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-700 text-xl font-bold p-1">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-4">
+                <div id="modalChart" class="relative w-full flex flex-col items-center"></div>
+            </div>
         </div>
     </div>
 
-    <!-- TOAST NOTIFICATION BOX -->
-    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
-
-    <!-- APPLICATION LOGIC & INTERACTIVITY -->
+    <!-- JavaScript Application Logic -->
     <script>
-        // Global state variables
-        let rawLogData = null;
-        let data = [];
+        // Global State
+        let rawData = null;
+        let result_set = [];
         let config = {};
         let deviceInfo = {};
         let currentFrame = 0;
@@ -412,7 +159,6 @@
         let isPlaying = false;
         let playInterval = null;
 
-        // Display options state
         let displayOptions = {
             showNoise: false,
             showPeaks: true,
@@ -425,357 +171,309 @@
             histoType: 'mp'
         };
 
-        // Toast notification helper replacing alert()
-        function showToast(message, type = 'info') {
-            const container = document.getElementById('toastContainer');
-            const toast = document.createElement('div');
-            
-            const bgColors = {
-                info: 'bg-slate-800 text-white',
-                success: 'bg-emerald-600 text-white',
-                warning: 'bg-amber-600 text-white',
-                error: 'bg-rose-600 text-white'
-            };
-
-            toast.className = `px-4 py-2.5 rounded-lg shadow-xl text-xs font-semibold flex items-center gap-2 transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto ${bgColors[type] || bgColors.info}`;
-            toast.innerHTML = `<span>${message}</span>`;
-            
-            container.appendChild(toast);
-            
-            // Trigger transition
-            setTimeout(() => {
-                toast.classList.remove('translate-y-2', 'opacity-0');
-            }, 10);
-
-            setTimeout(() => {
-                toast.classList.add('opacity-0', 'translate-y-2');
-                setTimeout(() => toast.remove(), 300);
-            }, 3500);
-        }
-
-        // Setup Drag & Drop Handlers
+        // DOM Elements
         const dropZone = document.getElementById('dropZone');
-        
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, preventDefaults, false);
-            document.body.addEventListener(eventName, preventDefaults, false);
-        });
+        const fileInput = document.getElementById('fileInput');
+        const visualizerApp = document.getElementById('visualizerApp');
+        const exportFullCsvBtn = document.getElementById('exportFullCsvBtn');
+        const exportFrameCsvBtn = document.getElementById('exportFrameCsvBtn');
 
-        function preventDefaults(e) {
+        // File Drag & Drop Event Listeners
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => {
             e.preventDefault();
-            e.stopPropagation();
-        }
-
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-active'), false);
+            dropZone.classList.add('border-emerald-500', 'bg-emerald-50/50');
         });
-
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-active'), false);
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('border-emerald-500', 'bg-emerald-50/50');
         });
-
         dropZone.addEventListener('drop', (e) => {
-            const dt = e.dataTransfer;
-            const files = dt.files;
-            if (files && files.length > 0) {
-                processFile(files[0]);
+            e.preventDefault();
+            dropZone.classList.remove('border-emerald-500', 'bg-emerald-50/50');
+            if (e.dataTransfer.files.length > 0) {
+                handleFile(e.dataTransfer.files[0]);
             }
         });
 
-        function handleFileSelect(e) {
-            const files = e.target.files;
-            if (files && files.length > 0) {
-                processFile(files[0]);
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
             }
-        }
+        });
 
-        // File reader and gzipped unpacker logic
-        function processFile(file) {
-            const fileNameDisplay = document.getElementById('fileNameDisplay');
-            fileNameDisplay.textContent = `File: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
-            fileNameDisplay.classList.remove('hidden');
-
+        // File Parsing Logic
+        function handleFile(file) {
             const reader = new FileReader();
+            const fileName = file.name;
 
-            // Check if file is gzipped (.gz)
-            if (file.name.endsWith('.gz')) {
+            if (fileName.endsWith('.gz') || fileName.endsWith('.json.gz')) {
                 reader.onload = function(e) {
                     try {
-                        const arrayBuffer = e.target.result;
-                        const uint8Array = new Uint8Array(arrayBuffer);
-                        // Decompress with Pako
-                        const decompressedText = pako.ungzip(uint8Array, { to: 'string' });
-                        const parsedJson = JSON.parse(decompressedText);
-                        loadJsonLogData(parsedJson, file.name);
-                        showToast(`Successfully loaded & decompressed ${file.name}`, 'success');
+                        const compressed = new Uint8Array(e.target.result);
+                        const decompressed = pako.inflate(compressed, { to: 'string' });
+                        const parsedData = JSON.parse(decompressed);
+                        loadDataset(parsedData, fileName);
                     } catch (err) {
-                        console.error(err);
-                        showToast(`Failed to parse gzipped file: ${err.message}`, 'error');
+                        alert('Error decompressing or parsing .json.gz file: ' + err.message);
                     }
                 };
                 reader.readAsArrayBuffer(file);
-            } else {
+            } else if (fileName.endsWith('.json')) {
                 reader.onload = function(e) {
                     try {
-                        const parsedJson = JSON.parse(e.target.result);
-                        loadJsonLogData(parsedJson, file.name);
-                        showToast(`Successfully loaded ${file.name}`, 'success');
+                        const parsedData = JSON.parse(e.target.result);
+                        loadDataset(parsedData, fileName);
                     } catch (err) {
-                        console.error(err);
-                        showToast(`Invalid JSON file format: ${err.message}`, 'error');
+                        alert('Error parsing JSON file: ' + err.message);
                     }
                 };
                 reader.readAsText(file);
+            } else {
+                alert('Unsupported file type. Please upload a .json or .json.gz file.');
             }
         }
 
-        // Initialize and load log dataset
-        function loadJsonLogData(parsedJson, sourceName = 'Uploaded Log') {
-            rawLogData = parsedJson;
-            data = parsedJson.Result_Set || [];
-            config = parsedJson.configuration || {};
-            const infoList = parsedJson.info || [];
+        // Initialize App State with Dataset
+        function loadDataset(data, fileName) {
+            rawData = data;
+            result_set = data.Result_Set || [];
+            config = data.configuration || {};
             
-            // Handle info field formatting (list or dict)
-            if (Array.isArray(infoList) && infoList.length > 0) {
-                deviceInfo = infoList[0];
-            } else if (typeof infoList === 'object') {
-                deviceInfo = infoList;
-            } else {
-                deviceInfo = {};
-            }
-
-            if (data.length === 0) {
-                showToast('Warning: Logfile contains empty Result_Set!', 'warning');
-            }
+            const infoList = data.info || [];
+            deviceInfo = Array.isArray(infoList) && infoList.length > 0 ? infoList[0] : (typeof infoList === 'object' ? infoList : {});
 
             currentFrame = 0;
-            if (isPlaying) stopPlay();
+            numPeaksToShow = config.nr_peaks || 4;
 
-            // Initialize controls & bounds
-            const frameSlider = document.getElementById('frameSlider');
-            const frameSlider2 = document.getElementById('frameSlider2');
-            const maxFrame = Math.max(0, data.length - 1);
-            
-            frameSlider.max = maxFrame;
-            frameSlider2.max = maxFrame;
-            frameSlider.value = 0;
-            frameSlider2.value = 0;
+            if (result_set.length === 0) {
+                alert('No Result_Set found in log file.');
+                return;
+            }
 
-            initVersionInfo();
+            // Reveal UI and Enable Actions
+            dropZone.classList.add('hidden');
+            visualizerApp.classList.remove('hidden');
+            visualizerApp.classList.add('flex');
+            exportFullCsvBtn.disabled = false;
+            exportFrameCsvBtn.disabled = false;
+
+            renderControlRows();
+            initVersionInfo(fileName);
             initNumPeaksSelect();
             checkHistogramAvailability();
             updatePeaksOptionsEnabled();
             updateDisplay();
         }
 
-        // Initialize version banner display
-        function initVersionInfo() {
-            const versionDiv = document.getElementById('versionInfo');
-            
-            function formatVersion(val) {
-                if (!val || (typeof val === 'string' && val.trim() === '')) return 'N/A';
-                if (Array.isArray(val)) return val.join('.');
-                return val;
-            }
+        // Generate Dual Control Rows (Top & Bottom)
+        function renderControlRows() {
+            const template = (suffix) => `
+                <div class="flex flex-wrap items-center justify-between gap-3 text-xs">
+                    <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+                        <label class="inline-flex items-center gap-1.5 cursor-pointer font-medium text-slate-700">
+                            <input type="checkbox" id="showNoise${suffix}" class="rounded text-emerald-600 focus:ring-emerald-500">
+                            <span>Noise</span>
+                        </label>
+                        <label class="inline-flex items-center gap-1.5 cursor-pointer font-medium text-slate-700">
+                            <input type="checkbox" id="showXtalk${suffix}" class="rounded text-emerald-600 focus:ring-emerald-500">
+                            <span>XTalk</span>
+                        </label>
 
-            const hostVersion = formatVersion(deviceInfo['host version'] || deviceInfo['EVM version'] || deviceInfo['host_version']);
-            const fwVersion = formatVersion(deviceInfo['fw version'] || deviceInfo['fw_version']);
-            const loggerVersion = formatVersion(deviceInfo['logger version'] || deviceInfo['logger_version']);
-            const serialNumber = formatVersion(deviceInfo['serial number'] || deviceInfo['serial_number']);
+                        <div class="flex items-center gap-2 border-l border-r border-slate-200 px-3 py-0.5">
+                            <label class="inline-flex items-center gap-1.5 cursor-pointer font-semibold text-slate-800">
+                                <input type="checkbox" id="showPeaks${suffix}" checked class="rounded text-emerald-600 focus:ring-emerald-500">
+                                <span>Peaks</span>
+                            </label>
+                            <select id="numPeaksSelect${suffix}" class="border border-slate-300 rounded px-1.5 py-0.5 text-xs bg-white focus:outline-none focus:border-emerald-500"></select>
 
-            versionDiv.innerHTML = `<i class="fa-solid fa-circle-info mr-1.5"></i> <strong>Version Information:</strong> Host: ${hostVersion} | FW: ${fwVersion} | Logger: ${loggerVersion} | Serial: ${serialNumber}`;
+                            <label class="inline-flex items-center gap-1 cursor-pointer text-slate-600">
+                                <input type="checkbox" id="showDistance${suffix}" checked class="rounded text-emerald-600 focus:ring-emerald-500">
+                                <span>Distance</span>
+                            </label>
+                            <label class="inline-flex items-center gap-1 cursor-pointer text-slate-600">
+                                <input type="checkbox" id="showSNR${suffix}" checked class="rounded text-emerald-600 focus:ring-emerald-500">
+                                <span>SNR</span>
+                            </label>
+                            <label class="inline-flex items-center gap-1 cursor-pointer text-slate-600">
+                                <input type="checkbox" id="showSignal${suffix}" class="rounded text-emerald-600 focus:ring-emerald-500">
+                                <span>Signal</span>
+                            </label>
+                            <label class="inline-flex items-center gap-1 cursor-pointer text-slate-600">
+                                <input type="checkbox" id="showXYZ${suffix}" class="rounded text-emerald-600 focus:ring-emerald-500">
+                                <span>XYZ</span>
+                            </label>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <label class="inline-flex items-center gap-1.5 cursor-pointer font-medium text-slate-700">
+                                <input type="checkbox" id="showHistogram${suffix}" disabled class="rounded text-emerald-600 focus:ring-emerald-500 disabled:opacity-50">
+                                <span>Histogram</span>
+                            </label>
+                            <select id="histoTypeSelect${suffix}" disabled class="border border-slate-300 rounded px-1.5 py-0.5 text-xs bg-white focus:outline-none focus:border-emerald-500 disabled:opacity-50">
+                                <option value="mp">MP</option>
+                                <option value="ref">Ref</option>
+                                <option value="mp_ha">MP_HA</option>
+                                <option value="ref_ha">Ref_HA</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 flex-1 max-w-md justify-end">
+                        <input type="range" id="frameSlider${suffix}" min="0" max="${result_set.length - 1}" value="0" step="1" class="w-full accent-emerald-600">
+                        <span id="frameInfo${suffix}" class="font-mono text-xs text-slate-600 whitespace-nowrap min-w-[65px] text-right">0 / ${result_set.length - 1}</span>
+                        <div class="flex items-center gap-1">
+                            <button onclick="prevFrame()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-2.5 py-1 rounded font-semibold text-xs transition">◀</button>
+                            <button onclick="togglePlay()" id="playBtn${suffix}" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded font-semibold text-xs transition"><i class="fa-solid fa-play"></i></button>
+                            <button onclick="nextFrame()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-2.5 py-1 rounded font-semibold text-xs transition">▶</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('controlsGroup1').innerHTML = template('1');
+            document.getElementById('controlsGroup2').innerHTML = template('2');
+
+            bindControlEvents('1', '2');
+            bindControlEvents('2', '1');
         }
 
-        // Histogram availability checker matching python logic
-        function checkHistogramAvailability(frame = null) {
-            if (frame === null && data.length > 0) {
-                frame = data[currentFrame] || data[0];
-            }
+        // Bind and Synchronize Top and Bottom Controls
+        function bindControlEvents(primary, secondary) {
+            document.getElementById(`frameSlider${primary}`).addEventListener('input', (e) => {
+                currentFrame = parseInt(e.target.value);
+                updateDisplay();
+            });
 
+            ['showNoise', 'showXtalk', 'showDistance', 'showSNR', 'showXYZ', 'showSignal'].forEach(key => {
+                document.getElementById(`${key}${primary}`).addEventListener('change', (e) => {
+                    displayOptions[key] = e.target.checked;
+                    syncCheckboxes(key, primary, secondary);
+                    updateDisplay();
+                });
+            });
+
+            document.getElementById(`showPeaks${primary}`).addEventListener('change', (e) => {
+                displayOptions.showPeaks = e.target.checked;
+                syncCheckboxes('showPeaks', primary, secondary);
+                updatePeaksOptionsEnabled();
+                updateDisplay();
+            });
+
+            document.getElementById(`numPeaksSelect${primary}`).addEventListener('change', (e) => {
+                numPeaksToShow = parseInt(e.target.value);
+                document.getElementById(`numPeaksSelect${secondary}`).value = e.target.value;
+                updateDisplay();
+            });
+
+            document.getElementById(`showHistogram${primary}`).addEventListener('change', (e) => {
+                displayOptions.showHistogram = e.target.checked;
+                syncCheckboxes('showHistogram', primary, secondary);
+                updateDisplay();
+            });
+
+            document.getElementById(`histoTypeSelect${primary}`).addEventListener('change', (e) => {
+                displayOptions.histoType = e.target.value;
+                document.getElementById(`histoTypeSelect${secondary}`).value = e.target.value;
+                updateHistogramDisplay();
+            });
+        }
+
+        function syncCheckboxes(key, srcSuffix, destSuffix) {
+            const val = document.getElementById(`${key}${srcSuffix}`).checked;
+            document.getElementById(`${key}${destSuffix}`).checked = val;
+        }
+
+        // Detect Histogram Availability
+        function checkHistogramAvailability(frame = null) {
+            if (frame === null) frame = result_set[0];
             hasHistogram = false;
 
             if (frame) {
-                if (frame.mp_histo && frame.mp_histo.length > 0) {
-                    for (let i = 0; i < frame.mp_histo.length; i++) {
-                        const row = frame.mp_histo[i];
-                        if (Array.isArray(row) && row.length > 0) {
-                            const item = row[0];
-                            if (item && item.bin && Array.isArray(item.bin) && item.bin.length > 0) {
-                                hasHistogram = true;
-                                break;
+                const checkHistoKey = (key) => {
+                    if (frame[key] && frame[key].length > 0) {
+                        for (let item of frame[key]) {
+                            const target = Array.isArray(item) ? item[0] : item;
+                            if (target && target.bin && Array.isArray(target.bin) && target.bin.length > 0) {
+                                return true;
                             }
                         }
                     }
-                }
+                    return false;
+                };
 
-                if (!hasHistogram && frame.ref_histo && frame.ref_histo.length > 0) {
-                    for (let i = 0; i < frame.ref_histo.length; i++) {
-                        const item = frame.ref_histo[i];
-                        if (item && item.bin && Array.isArray(item.bin) && item.bin.length > 0) {
-                            hasHistogram = true;
-                            break;
-                        }
-                    }
-                }
-
-                if (!hasHistogram && frame.mp_histo_HA && frame.mp_histo_HA.length > 0) {
-                    for (let i = 0; i < frame.mp_histo_HA.length; i++) {
-                        const row = frame.mp_histo_HA[i];
-                        if (Array.isArray(row) && row.length > 0) {
-                            const item = row[0];
-                            if (item && item.bin && Array.isArray(item.bin) && item.bin.length > 0) {
-                                hasHistogram = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                if (!hasHistogram && frame.ref_histo_HA && frame.ref_histo_HA.length > 0) {
-                    for (let i = 0; i < frame.ref_histo_HA.length; i++) {
-                        const item = frame.ref_histo_HA[i];
-                        if (item && item.bin && Array.isArray(item.bin) && item.bin.length > 0) {
-                            hasHistogram = true;
-                            break;
-                        }
-                    }
-                }
+                hasHistogram = checkHistoKey('mp_histo') || checkHistoKey('ref_histo') || checkHistoKey('mp_histo_HA') || checkHistoKey('ref_histo_HA');
             }
 
-            const elements = ['showHistogram', 'histoTypeSelect', 'showHistogram2', 'histoTypeSelect2'];
-            elements.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.disabled = !hasHistogram;
+            ['1', '2'].forEach(suffix => {
+                document.getElementById(`showHistogram${suffix}`).disabled = !hasHistogram;
+                document.getElementById(`histoTypeSelect${suffix}`).disabled = !hasHistogram;
             });
         }
 
-        // Initialize peak dropdown selection
+        // Metadata Header
+        function initVersionInfo(fileName) {
+            const versionDiv = document.getElementById('versionInfo');
+            const formatVer = (val) => (!val || (typeof val === 'string' && val.trim() === '')) ? 'N/A' : (Array.isArray(val) ? val.join('.') : val);
+
+            const hostVersion = formatVer(deviceInfo['host version'] || deviceInfo['EVM version'] || deviceInfo['host_version']);
+            const fwVersion = formatVer(deviceInfo['fw version'] || deviceInfo['fw_version']);
+            const loggerVersion = formatVer(deviceInfo['logger version'] || deviceInfo['logger_version']);
+            const serialNumber = formatVer(deviceInfo['serial number'] || deviceInfo['serial_number']);
+
+            versionDiv.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <span class="font-bold text-slate-700"><i class="fa-solid fa-file-code text-slate-500 mr-1"></i>${fileName}</span>
+                </div>
+                <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
+                    <span>Host: <strong class="text-slate-800">${hostVersion}</strong></span>
+                    <span>FW: <strong class="text-slate-800">${fwVersion}</strong></span>
+                    <span>Logger: <strong class="text-slate-800">${loggerVersion}</strong></span>
+                    <span>Serial: <strong class="text-slate-800">${serialNumber}</strong></span>
+                </div>
+            `;
+        }
+
         function initNumPeaksSelect() {
             const maxObjects = 4;
             const defaultPeaks = config.nr_peaks || 4;
-            const selects = ['numPeaksSelect', 'numPeaksSelect2'];
 
-            selects.forEach(selectId => {
-                const select = document.getElementById(selectId);
+            ['1', '2'].forEach(suffix => {
+                const select = document.getElementById(`numPeaksSelect${suffix}`);
                 if (!select) return;
-
                 select.innerHTML = '';
                 for (let i = 1; i <= maxObjects; i++) {
-                    const option = document.createElement('option');
-                    option.value = i;
-                    option.textContent = i;
-                    if (i === defaultPeaks) option.selected = true;
-                    select.appendChild(option);
+                    const opt = document.createElement('option');
+                    opt.value = i;
+                    opt.textContent = i;
+                    if (i === defaultPeaks) opt.selected = true;
+                    select.appendChild(opt);
                 }
             });
-
-            numPeaksToShow = parseInt(document.getElementById('numPeaksSelect').value) || 4;
+            numPeaksToShow = parseInt(document.getElementById('numPeaksSelect1').value);
         }
 
         function updatePeaksOptionsEnabled() {
-            const showPeaks = document.getElementById('showPeaks').checked;
-            const peaksOptions = ['showDistance', 'showSNR', 'showXYZ', 'showSignal', 'numPeaksSelect',
-                                  'showDistance2', 'showSNR2', 'showXYZ2', 'showSignal2', 'numPeaksSelect2'];
-
-            peaksOptions.forEach(optId => {
-                const element = document.getElementById(optId);
-                if (element) element.disabled = !showPeaks;
+            const showPeaks = displayOptions.showPeaks;
+            ['showDistance', 'showSNR', 'showXYZ', 'showSignal', 'numPeaksSelect'].forEach(optKey => {
+                ['1', '2'].forEach(suffix => {
+                    const el = document.getElementById(`${optKey}${suffix}`);
+                    if (el) el.disabled = !showPeaks;
+                });
             });
         }
 
-        // Sync bi-directional controls
-        function syncControl(targetId, checked) {
-            const target = document.getElementById(targetId);
-            if (target) target.checked = checked;
-        }
-
-        // Event listeners setup
-        document.getElementById('frameSlider').addEventListener('input', (e) => {
-            currentFrame = parseInt(e.target.value);
-            updateDisplay();
-        });
-        document.getElementById('frameSlider2').addEventListener('input', (e) => {
-            currentFrame = parseInt(e.target.value);
-            updateDisplay();
-        });
-
-        // Toggle listeners (top & bottom synced)
-        const checkMap = [
-            ['showNoise', 'showNoise2', 'showNoise'],
-            ['showPeaks', 'showPeaks2', 'showPeaks'],
-            ['showXtalk', 'showXtalk2', 'showXtalk'],
-            ['showDistance', 'showDistance2', 'showDistance'],
-            ['showSNR', 'showSNR2', 'showSNR'],
-            ['showXYZ', 'showXYZ2', 'showXYZ'],
-            ['showSignal', 'showSignal2', 'showSignal'],
-            ['showHistogram', 'showHistogram2', 'showHistogram']
-        ];
-
-        checkMap.forEach(([topId, btmId, propKey]) => {
-            document.getElementById(topId).addEventListener('change', (e) => {
-                displayOptions[propKey] = e.target.checked;
-                syncControl(btmId, e.target.checked);
-                if (propKey === 'showPeaks') updatePeaksOptionsEnabled();
-                updateDisplay();
-            });
-
-            document.getElementById(btmId).addEventListener('change', (e) => {
-                displayOptions[propKey] = e.target.checked;
-                syncControl(topId, e.target.checked);
-                if (propKey === 'showPeaks') updatePeaksOptionsEnabled();
-                updateDisplay();
-            });
-        });
-
-        document.getElementById('numPeaksSelect').addEventListener('change', (e) => {
-            numPeaksToShow = parseInt(e.target.value);
-            document.getElementById('numPeaksSelect2').value = e.target.value;
-            updateDisplay();
-        });
-        document.getElementById('numPeaksSelect2').addEventListener('change', (e) => {
-            numPeaksToShow = parseInt(e.target.value);
-            document.getElementById('numPeaksSelect').value = e.target.value;
-            updateDisplay();
-        });
-
-        document.getElementById('histoTypeSelect').addEventListener('change', (e) => {
-            displayOptions.histoType = e.target.value;
-            document.getElementById('histoTypeSelect2').value = e.target.value;
-            updateHistogramDisplay();
-        });
-        document.getElementById('histoTypeSelect2').addEventListener('change', (e) => {
-            displayOptions.histoType = e.target.value;
-            document.getElementById('histoTypeSelect').value = e.target.value;
-            updateHistogramDisplay();
-        });
-
-        // Frame update & main rendering engine
+        // Render Main Grid & Metadata
         function updateDisplay() {
-            if (!data || data.length === 0) {
-                document.getElementById('frameDetails').innerHTML = 'No log data loaded.';
-                document.getElementById('dataGrid').innerHTML = '<div class="p-8 text-center text-slate-400">Please select or drop a .json/.json.gz log file above.</div>';
-                return;
-            }
-
-            const frame = data[currentFrame];
-            if (!frame) return;
-
+            const frame = result_set[currentFrame];
             const grid = document.getElementById('dataGrid');
-            const frameSlider = document.getElementById('frameSlider');
-            const frameSlider2 = document.getElementById('frameSlider2');
-            const frameInfo = document.getElementById('frameInfo');
-            const frameInfo2 = document.getElementById('frameInfo2');
-            const frameDetails = document.getElementById('frameDetails');
 
             checkHistogramAvailability(frame);
 
-            frameSlider.value = currentFrame;
-            frameSlider2.value = currentFrame;
-            frameInfo.textContent = `${currentFrame} / ${data.length - 1}`;
-            frameInfo2.textContent = `${currentFrame} / ${data.length - 1}`;
+            ['1', '2'].forEach(suffix => {
+                document.getElementById(`frameSlider${suffix}`).value = currentFrame;
+                document.getElementById(`frameInfo${suffix}`).textContent = `${currentFrame} / ${result_set.length - 1}`;
+            });
 
-            // Calculate grid resolution
             let resolution = 'N/A';
             if (frame.results && frame.results.length > 0) {
                 const rows = frame.results.length;
@@ -783,147 +481,123 @@
                 resolution = `${cols}x${rows}`;
             }
 
-            // Update frame metadata header
+            const frameDetails = document.getElementById('frameDetails');
             if (frame.info) {
                 const iterations = config.iterations || 'N/A';
                 const period = config.period || 'N/A';
                 const confThresh = config.confidence_threshold || 'N/A';
                 const readTime = frame.info.read_time || frame.info.systick_t0 || 'N/A';
                 const haIterations = config.high_accuracy_iterations || 'N/A';
-                const warningText = (frame.info.warnings > 0) ? '<span class="text-rose-600 font-bold"><i class="fa-solid fa-triangle-exclamation"></i> Frame has warnings</span> | ' : '';
+                const hasWarnings = frame.info.warnings > 0;
 
-                frameDetails.innerHTML = `${warningText}<strong>Frame:</strong> ${frame.info.frame_number || currentFrame} | ` +
-                    `<strong>Res:</strong> ${resolution} | ` +
-                    `<strong>Iter:</strong> ${iterations}k | ` +
-                    `<strong>HA_Iter:</strong> ${haIterations}k | ` +
-                    `<strong>Period:</strong> ${period}ms | ` +
-                    `<strong>Conf Thresh:</strong> ${confThresh} | ` +
-                    `<strong>Temp:</strong> ${frame.info.temperature || 'N/A'}°C | ` +
-                    `<strong>ReadTime:</strong> ${readTime} | ` +
-                    `<span class="inline-flex items-center gap-1.5 ml-2">` +
-                    `<span class="legend-color peak-high">c>20</span>` +
-                    `<span class="legend-color peak-medium">20≥c>10</span>` +
-                    `<span class="legend-color peak-low">10≥c>0</span>` +
-                    `</span>`;
+                frameDetails.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        ${hasWarnings ? '<span class="text-rose-600 font-bold"><i class="fa-solid fa-triangle-exclamation"></i> Warnings</span>' : ''}
+                        <span>Frame: <strong class="text-blue-900">${frame.info.frame_number || currentFrame}</strong></span>
+                        <span>Res: <strong>${resolution}</strong></span>
+                        <span>Iter: <strong>${iterations}k</strong></span>
+                        <span>HA_Iter: <strong>${haIterations}k</strong></span>
+                        <span>Period: <strong>${period}ms</strong></span>
+                        <span>Conf Thresh: <strong>${confThresh}</strong></span>
+                        <span>Temp: <strong>${frame.info.temperature}°C</strong></span>
+                        <span>ReadTime: <strong>${readTime}</strong></span>
+                    </div>
+                    <div class="flex items-center gap-2 text-[10px] uppercase tracking-wider font-sans font-bold">
+                        <span class="px-1.5 py-0.5 rounded peak-high">c &gt; 20</span>
+                        <span class="px-1.5 py-0.5 rounded peak-medium">20 ≥ c &gt; 10</span>
+                        <span class="px-1.5 py-0.5 rounded peak-low">10 ≥ c &gt; 0</span>
+                    </div>
+                `;
             } else {
                 frameDetails.textContent = `Resolution: ${resolution} | Frame info not available`;
             }
 
             grid.innerHTML = '';
-
             if (!frame.results) {
-                grid.innerHTML = '<div style="padding: 20px; color: #999;">No results data available</div>';
+                grid.innerHTML = '<div class="p-8 text-center text-slate-400 italic">No results data available for this frame</div>';
                 return;
             }
 
-            let rows = frame.results.length;
-            let cols = frame.results[0] ? frame.results[0].length : 0;
+            const rows = frame.results.length;
+            const cols = frame.results[0] ? frame.results[0].length : 0;
+            grid.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
 
-            grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-
-            // Render individual spatial cells
             for (let row = 0; row < rows; row++) {
                 for (let col = 0; col < cols; col++) {
                     const cell = document.createElement('div');
-                    cell.className = 'cell';
+                    cell.className = 'bg-white border border-slate-300 rounded p-1.5 flex flex-col justify-between relative min-h-[64px] shadow-sm hover:border-slate-400 transition';
 
                     const header = document.createElement('div');
-                    header.className = 'cell-header';
+                    header.className = 'text-[9px] font-mono text-slate-400 text-right';
                     header.textContent = `(${col},${row})`;
                     cell.appendChild(header);
 
                     const dataDiv = document.createElement('div');
-                    dataDiv.className = 'cell-data';
+                    dataDiv.className = 'text-[10px] font-mono leading-tight space-y-1 mt-1';
 
                     if (frame.results[row] && frame.results[row][col]) {
                         const cellData = frame.results[row][col];
                         let hasData = false;
 
-                        // Display Noise
                         if (displayOptions.showNoise && 'noise' in cellData) {
                             const noiseDiv = document.createElement('div');
-                            noiseDiv.className = 'peak peak-none';
+                            noiseDiv.className = 'bg-slate-100 text-slate-600 px-1 py-0.5 rounded text-[9px]';
                             noiseDiv.textContent = `Noise: ${cellData.noise}`;
                             dataDiv.appendChild(noiseDiv);
                             hasData = true;
                         }
 
-                        // Display Peaks
                         if (displayOptions.showPeaks && cellData.peaks && cellData.peaks.length > 0) {
                             cellData.peaks.slice(0, numPeaksToShow).forEach((peak, peakIndex) => {
                                 const peakDiv = document.createElement('div');
-                                peakDiv.className = 'peak';
-
-                                const distance = peak.distance;
                                 const snr = peak.snr;
-                                const signal = peak.signal;
-                                const x = peak.x;
-                                const y = peak.y;
-                                const z = peak.z;
 
                                 let peakClass = 'peak-none';
                                 if (snr > 20) peakClass = 'peak-high';
                                 else if (snr > 10) peakClass = 'peak-medium';
                                 else if (snr > 0) peakClass = 'peak-low';
 
-                                peakDiv.classList.add(peakClass);
+                                peakDiv.className = `border rounded px-1 py-0.5 ${peakClass}`;
                                 const peakNum = peakIndex + 1;
-
                                 let peakLines = [];
 
                                 if (displayOptions.showDistance) {
-                                    const distanceText = `${distance}`;
-                                    const padding = ' '.repeat(Math.max(0, 7 - distanceText.length));
-                                    peakLines.push(`d${peakNum}:${padding}${distanceText}`);
+                                    peakLines.push(`d${peakNum}:${String(peak.distance).padStart(7, ' ')}`);
                                 }
                                 if (displayOptions.showSNR) {
-                                    const snrText = `${snr}`;
-                                    const padding = ' '.repeat(Math.max(0, 7 - snrText.length));
-                                    peakLines.push(`c${peakNum}:${padding}${snrText}`);
+                                    peakLines.push(`c${peakNum}:${String(snr).padStart(7, ' ')}`);
                                 }
                                 if (displayOptions.showSignal) {
-                                    const signalText = `${signal}`;
-                                    const padding = ' '.repeat(Math.max(0, 7 - signalText.length));
-                                    peakLines.push(`s${peakNum}:${padding}${signalText}`);
+                                    peakLines.push(`s${peakNum}:${String(peak.signal).padStart(7, ' ')}`);
                                 }
                                 if (displayOptions.showXYZ) {
-                                    const xNum = parseFloat(x) || 0;
-                                    const yNum = parseFloat(y) || 0;
-                                    const zNum = parseFloat(z) || 0;
-                                    const xText = xNum.toFixed(1);
-                                    const yText = yNum.toFixed(1);
-                                    const zText = zNum.toFixed(1);
-                                    const xPadding = ' '.repeat(Math.max(0, 7 - xText.length));
-                                    const yPadding = ' '.repeat(Math.max(0, 7 - yText.length));
-                                    const zPadding = ' '.repeat(Math.max(0, 7 - zText.length));
-                                    peakLines.push(`x${peakNum}:${xPadding}${xText}`);
-                                    peakLines.push(`y${peakNum}:${yPadding}${yText}`);
-                                    peakLines.push(`z${peakNum}:${zPadding}${zText}`);
+                                    const xText = parseFloat(peak.x).toFixed(1);
+                                    const yText = parseFloat(peak.y).toFixed(1);
+                                    const zText = parseFloat(peak.z).toFixed(1);
+                                    peakLines.push(`x${peakNum}:${xText.padStart(7, ' ')}`);
+                                    peakLines.push(`y${peakNum}:${yText.padStart(7, ' ')}`);
+                                    peakLines.push(`z${peakNum}:${zText.padStart(7, ' ')}`);
                                 }
 
-                                peakDiv.innerHTML = peakLines.join('<br>');
+                                peakDiv.innerHTML = peakLines.map(line => `<div class="whitespace-pre">${line}</div>`).join('');
                                 dataDiv.appendChild(peakDiv);
                                 hasData = true;
                             });
                         }
 
-                        // Display XTalk
                         if (displayOptions.showXtalk && 'xtalk' in cellData) {
                             const xtalkDiv = document.createElement('div');
-                            xtalkDiv.className = 'peak';
-                            xtalkDiv.style.color = '#6b3fa0';
-                            xtalkDiv.style.background = '#f3e8ff';
-                            xtalkDiv.style.borderLeft = '3px solid #a855f7';
+                            xtalkDiv.className = 'bg-purple-50 text-purple-700 border border-purple-200 px-1 py-0.5 rounded text-[9px]';
                             xtalkDiv.textContent = `XTalk: ${cellData.xtalk}`;
                             dataDiv.appendChild(xtalkDiv);
                             hasData = true;
                         }
 
                         if (!hasData) {
-                            dataDiv.innerHTML = '<div class="no-data">No data</div>';
+                            dataDiv.innerHTML = '<div class="text-slate-300 italic text-[9px]">No data</div>';
                         }
                     } else {
-                        dataDiv.innerHTML = '<div class="no-data">No data</div>';
+                        dataDiv.innerHTML = '<div class="text-slate-300 italic text-[9px]">No data</div>';
                     }
 
                     cell.appendChild(dataDiv);
@@ -934,222 +608,162 @@
             updateHistogramDisplay();
         }
 
-        // SVG histogram builder matching python script
+        // SVG Histogram Chart Generator
         function createHistogramChart(bins, width, height, color = '#10b981', showTicks = false) {
             if (!bins || bins.length === 0) {
-                return `<div style="width:${width}px;height:${height}px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:10px;">No data</div>`;
+                return `<div style="width:${width}px;height:${height}px;" class="flex items-center justify-center text-slate-300 text-[9px]">No data</div>`;
             }
 
             const maxValue = Math.max(...bins);
-            const padding = showTicks ? 45 : 12;
+            const padding = showTicks ? 45 : 10;
             const chartWidth = width - padding * 2;
             const chartHeight = height - padding * 2;
             const barWidth = chartWidth / bins.length;
             const barGap = Math.max(0.5, barWidth * 0.1);
             const actualBarWidth = Math.max(1, barWidth - barGap);
 
-            let svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg" style="background:#fff; border-radius:4px;">`;
+            let svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg" class="overflow-visible">`;
+            svg += `<line x1="${padding}" y1="${padding}" x2="${padding}" y2="${height - padding}" stroke="#cbd5e1" stroke-width="1"/>`;
+            svg += `<line x1="${padding}" y1="${height - padding}" x2="${width - padding}" y2="${height - padding}" stroke="#cbd5e1" stroke-width="1"/>`;
 
-            // Y & X axes
-            svg += `<line x1="${padding}" y1="${padding}" x2="${padding}" y2="${height - padding}" stroke="#475569" stroke-width="1"/>`;
-            svg += `<line x1="${padding}" y1="${height - padding}" x2="${width - padding}" y2="${height - padding}" stroke="#475569" stroke-width="1"/>`;
-
-            // Histogram bars
             bins.forEach((value, index) => {
                 const barHeight = maxValue > 0 ? (value / maxValue) * chartHeight : 0;
                 const x = padding + index * barWidth;
                 const y = height - padding - barHeight;
-
                 if (barHeight > 0) {
-                    svg += `<rect x="${x}" y="${y}" width="${actualBarWidth}" height="${barHeight}" fill="${color}" stroke="#0f172a" stroke-width="0.3"/>`;
+                    svg += `<rect x="${x}" y="${y}" width="${actualBarWidth}" height="${barHeight}" fill="${color}" opacity="0.85"/>`;
                 }
             });
 
-            // Optional detailed ticks for modal view
             if (showTicks) {
                 const xTickCount = Math.min(10, bins.length);
                 const xTickStep = Math.ceil(bins.length / xTickCount);
                 for (let i = 0; i <= bins.length; i += xTickStep) {
                     const x = padding + i * barWidth;
-                    svg += `<line x1="${x}" y1="${height - padding}" x2="${x}" y2="${height - padding + 4}" stroke="#475569" stroke-width="1"/>`;
-                    svg += `<text x="${x}" y="${height - padding + 16}" text-anchor="middle" font-size="11" fill="#475569" font-family="sans-serif">${i}</text>`;
+                    svg += `<line x1="${x}" y1="${height - padding}" x2="${x}" y2="${height - padding + 4}" stroke="#64748b" stroke-width="1"/>`;
+                    svg += `<text x="${x}" y="${height - padding + 16}" text-anchor="middle" font-size="10" fill="#64748b" font-family="sans-serif">${i}</text>`;
                 }
 
                 const yTickCount = 5;
                 for (let i = 0; i <= yTickCount; i++) {
                     const value = Math.round((maxValue / yTickCount) * i);
-                    const y = height - padding - (value / Math.max(1, maxValue)) * chartHeight;
-                    svg += `<line x1="${padding - 4}" y1="${y}" x2="${padding}" y2="${y}" stroke="#475569" stroke-width="1"/>`;
-                    svg += `<text x="${padding - 6}" y="${y + 4}" text-anchor="end" font-size="11" fill="#475569" font-family="sans-serif">${value}</text>`;
+                    const y = height - padding - (value / maxValue) * chartHeight;
+                    svg += `<line x1="${padding - 4}" y1="${y}" x2="${padding}" y2="${y}" stroke="#64748b" stroke-width="1"/>`;
+                    svg += `<text x="${padding - 6}" y="${y + 3}" text-anchor="end" font-size="10" fill="#64748b" font-family="sans-serif">${value}</text>`;
                 }
-
-                svg += `<text x="${width / 2}" y="${height - 6}" text-anchor="middle" font-size="11" font-weight="bold" fill="#334155" font-family="sans-serif">Bin Index</text>`;
-                svg += `<text x="${12}" y="${height / 2}" text-anchor="middle" font-size="11" font-weight="bold" fill="#334155" font-family="sans-serif" transform="rotate(-90, 12, ${height / 2})">Photon Count</text>`;
             }
 
             svg += `</svg>`;
             return svg;
         }
 
-        // Render spatial histogram thumbnail grid
+        // Render Histogram Grid
         function updateHistogramDisplay() {
-            if (!data || data.length === 0) return;
-            const frame = data[currentFrame];
+            const frame = result_set[currentFrame];
             const histoContainer = document.getElementById('histoContainer');
             const histoGrid = document.getElementById('histoGrid');
 
-            if (!displayOptions.showHistogram || !hasHistogram || !frame) {
-                histoContainer.style.display = 'none';
+            if (!displayOptions.showHistogram || !hasHistogram) {
+                histoContainer.classList.add('hidden');
                 return;
             }
 
-            histoContainer.style.display = 'block';
+            histoContainer.classList.remove('hidden');
             histoGrid.innerHTML = '';
 
-            let rows = 0;
-            let cols = 0;
-            if (frame.results && frame.results.length > 0) {
-                rows = frame.results.length;
-                cols = frame.results[0] ? frame.results[0].length : 0;
-            }
+            let rows = frame.results ? frame.results.length : 0;
+            let cols = frame.results && frame.results[0] ? frame.results[0].length : 0;
 
             const histoType = displayOptions.histoType;
             const isRefType = (histoType === 'ref' || histoType === 'ref_ha');
             const displayCols = isRefType ? 1 : cols;
 
-            histoGrid.style.gridTemplateColumns = `repeat(${displayCols}, 1fr)`;
+            histoGrid.style.gridTemplateColumns = `repeat(${displayCols}, minmax(0, 1fr))`;
 
             for (let row = 0; row < rows; row++) {
                 for (let col = 0; col < displayCols; col++) {
                     const cell = document.createElement('div');
-                    cell.className = 'histo-cell';
+                    cell.className = 'bg-slate-50 border border-slate-200 hover:border-emerald-500 rounded p-2 flex flex-col items-center justify-center cursor-pointer transition shadow-sm hover:shadow';
 
                     const header = document.createElement('div');
-                    header.className = 'histo-cell-header';
+                    header.className = 'text-[9px] font-mono text-slate-400 self-end mb-1';
                     header.textContent = `(${col},${row})`;
                     cell.appendChild(header);
 
-                    const chartContainer = document.createElement('div');
-                    chartContainer.className = 'histo-chart';
-
                     let binData = [];
-                    let color = '#3b82f6';
+                    let color = '#10b981';
 
-                    if (histoType === 'mp') {
-                        if (frame.mp_histo && frame.mp_histo[row] && frame.mp_histo[row][col]) {
-                            const histoData = frame.mp_histo[row][col];
-                            if (histoData && histoData.bin && Array.isArray(histoData.bin)) {
-                                binData = histoData.bin;
-                            }
-                            color = '#10b981';
-                        }
-                    } else if (histoType === 'ref') {
-                        if (frame.ref_histo && frame.ref_histo[row]) {
-                            const histoData = frame.ref_histo[row];
-                            if (histoData && histoData.bin && Array.isArray(histoData.bin)) {
-                                binData = histoData.bin;
-                            }
-                            color = '#3b82f6';
-                        }
-                    } else if (histoType === 'mp_ha') {
-                        if (frame.mp_histo_HA && frame.mp_histo_HA[row] && frame.mp_histo_HA[row][col]) {
-                            const histoData = frame.mp_histo_HA[row][col];
-                            if (histoData && histoData.bin && Array.isArray(histoData.bin)) {
-                                binData = histoData.bin;
-                            }
-                            color = '#f59e0b';
-                        }
-                    } else if (histoType === 'ref_ha') {
-                        if (frame.ref_histo_HA && frame.ref_histo_HA[row]) {
-                            const histoData = frame.ref_histo_HA[row];
-                            if (histoData && histoData.bin && Array.isArray(histoData.bin)) {
-                                binData = histoData.bin;
-                            }
-                            color = '#8b5cf6';
-                        }
+                    if (histoType === 'mp' && frame.mp_histo && frame.mp_histo[row] && frame.mp_histo[row][col]) {
+                        binData = frame.mp_histo[row][col].bin || [];
+                        color = '#10b981';
+                    } else if (histoType === 'ref' && frame.ref_histo && frame.ref_histo[row]) {
+                        binData = frame.ref_histo[row].bin || [];
+                        color = '#3b82f6';
+                    } else if (histoType === 'mp_ha' && frame.mp_histo_HA && frame.mp_histo_HA[row] && frame.mp_histo_HA[row][col]) {
+                        binData = frame.mp_histo_HA[row][col].bin || [];
+                        color = '#f97316';
+                    } else if (histoType === 'ref_ha' && frame.ref_histo_HA && frame.ref_histo_HA[row]) {
+                        binData = frame.ref_histo_HA[row].bin || [];
+                        color = '#a855f7';
                     }
+
+                    const chartDiv = document.createElement('div');
+                    chartDiv.innerHTML = createHistogramChart(binData, 120, 60, color);
+                    cell.appendChild(chartDiv);
 
                     if (binData.length > 0) {
-                        chartContainer.innerHTML = createHistogramChart(binData, 120, 60, color);
                         cell.onclick = () => openModal(histoType.toUpperCase(), row, col, binData, color);
-                    } else {
-                        chartContainer.innerHTML = '<div style="width:120px;height:60px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:10px;">No data</div>';
                     }
 
-                    cell.appendChild(chartContainer);
                     histoGrid.appendChild(cell);
                 }
             }
         }
 
-        // Open Modal Popup with Enlarged Histogram & Callout
+        // Modal for Enlarge Histogram View
         function openModal(type, row, col, bins, color) {
             const modal = document.getElementById('histoModal');
             const modalTitle = document.getElementById('modalTitle');
             const modalChart = document.getElementById('modalChart');
-            const frame = data[currentFrame];
+            const frame = result_set[currentFrame];
 
-            modalTitle.innerHTML = `<i class="fa-solid fa-chart-line text-blue-600"></i> ${type} Histogram Detail - Coordinate (${col},${row})`;
+            modalTitle.textContent = `${type} Histogram - Position (${col}, ${row})`;
+            modalChart.innerHTML = createHistogramChart(bins, 700, 450, color, true);
 
-            modalChart.innerHTML = createHistogramChart(bins, 780, 480, color, true);
-
-            // Add annotation badge over highest peak bin
             if (bins && bins.length > 0) {
-                let maxCount = -1;
+                let maxCount = 0;
                 let maxBinIndex = 0;
-
-                bins.forEach((value, index) => {
-                    if (value > maxCount) {
-                        maxCount = value;
-                        maxBinIndex = index;
+                bins.forEach((v, i) => {
+                    if (v > maxCount) {
+                        maxCount = v;
+                        maxBinIndex = i;
                     }
                 });
 
-                if (maxCount >= 0) {
-                    const width = 780;
-                    const height = 480;
-                    const padding = 45;
-                    const chartWidth = width - padding * 2;
-                    const chartHeight = height - padding * 2;
-                    const barWidth = chartWidth / bins.length;
-
-                    const x = padding + maxBinIndex * barWidth + barWidth / 2;
-                    const y = height - padding - (maxCount / Math.max(1, Math.max(...bins))) * chartHeight;
-
-                    const annotation = document.createElement('div');
-                    annotation.className = 'absolute bg-amber-300 text-slate-900 px-3 py-1 rounded-md font-bold text-xs shadow-md border border-amber-400 whitespace-nowrap z-10 pointer-events-none transform -translate-x-1/2 -translate-y-full mb-2';
-                    annotation.style.left = `${x}px`;
-                    annotation.style.top = `${y}px`;
-                    annotation.innerHTML = `<i class="fa-solid fa-location-dot"></i> Max Bin: ${maxBinIndex} (Count: ${maxCount})`;
-
-                    modalChart.appendChild(annotation);
-                }
+                const annotation = document.createElement('div');
+                annotation.className = 'mt-4 inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm';
+                annotation.innerHTML = `<i class="fa-solid fa-chart-line text-emerald-600"></i> Peak Bin: ${maxBinIndex} | Max Count: ${maxCount}`;
+                modalChart.appendChild(annotation);
             }
 
-            // Append detailed cell peak summary table inside modal
-            if (frame && frame.results && frame.results[row] && frame.results[row][col]) {
+            if (frame.results && frame.results[row] && frame.results[row][col]) {
                 const cellData = frame.results[row][col];
                 if (cellData.peaks && cellData.peaks.length > 0) {
-                    let peakInfoHtml = '<div class="w-full mt-6 p-4 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono">';
-                    peakInfoHtml += '<h4 class="font-bold text-slate-800 text-sm mb-2 flex items-center gap-1.5"><i class="fa-solid fa-list-check text-blue-600"></i> Peak Information Summary:</h4>';
-                    peakInfoHtml += '<div class="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">';
+                    const peakInfo = document.createElement('div');
+                    peakInfo.className = 'mt-3 w-full max-w-lg bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs space-y-1.5';
+                    peakInfo.innerHTML = '<div class="font-bold text-slate-700 border-b border-slate-200 pb-1">Cell Peak Metrics</div>';
 
-                    cellData.peaks.forEach((peak, idx) => {
-                        const distance = peak.distance;
-                        const snr = peak.snr;
-                        const signal = peak.signal;
-
-                        let colorClass = 'text-rose-700 bg-rose-50 border-rose-200';
-                        if (snr > 20) colorClass = 'text-emerald-700 bg-emerald-50 border-emerald-200';
-                        else if (snr > 10) colorClass = 'text-amber-700 bg-amber-50 border-amber-200';
-
-                        peakInfoHtml += `<div class="p-2.5 rounded border ${colorClass}">` +
-                            `<strong>Peak ${idx + 1}:</strong> Distance = ${distance} mm | SNR = ${snr} | Signal = ${signal || 'N/A'}` +
-                            `</div>`;
+                    cellData.peaks.forEach((p, idx) => {
+                        const snr = p.snr;
+                        const colorClass = snr > 20 ? 'text-emerald-700 font-semibold' : (snr > 10 ? 'text-amber-700' : 'text-rose-700');
+                        peakInfo.innerHTML += `
+                            <div class="flex justify-between font-mono ${colorClass}">
+                                <span>Peak ${idx + 1}: Distance = ${p.distance} mm</span>
+                                <span>SNR = ${snr}</span>
+                            </div>
+                        `;
                     });
-
-                    peakInfoHtml += '</div></div>';
-                    modalChart.innerHTML += peakInfoHtml;
+                    modalChart.appendChild(peakInfo);
                 }
             }
 
@@ -1163,12 +777,12 @@
             modal.classList.remove('flex');
         }
 
-        window.onclick = function(event) {
+        window.onclick = function(e) {
             const modal = document.getElementById('histoModal');
-            if (event.target === modal) closeModal();
+            if (e.target === modal) closeModal();
         };
 
-        // Navigation and Playback loop functions
+        // Frame Navigation & Auto-Play
         function prevFrame() {
             if (currentFrame > 0) {
                 currentFrame--;
@@ -1177,67 +791,153 @@
         }
 
         function nextFrame() {
-            if (data && currentFrame < data.length - 1) {
+            if (currentFrame < result_set.length - 1) {
                 currentFrame++;
                 updateDisplay();
             } else if (isPlaying) {
-                currentFrame = 0; // Loop playback
-                updateDisplay();
+                togglePlay();
             }
         }
 
         function togglePlay() {
+            isPlaying = !isPlaying;
+            ['1', '2'].forEach(suffix => {
+                const btn = document.getElementById(`playBtn${suffix}`);
+                if (btn) btn.innerHTML = isPlaying ? '<i class="fa-solid fa-pause"></i>' : '<i class="fa-solid fa-play"></i>';
+            });
+
             if (isPlaying) {
-                stopPlay();
+                playInterval = setInterval(() => {
+                    nextFrame();
+                }, 150);
             } else {
-                startPlay();
+                clearInterval(playInterval);
             }
         }
 
-        function startPlay() {
-            if (!data || data.length <= 1) return;
-            isPlaying = true;
-            document.getElementById('playIcon').className = 'fa-solid fa-pause';
-            document.getElementById('playText').textContent = 'Pause';
-            playInterval = setInterval(nextFrame, 250);
-        }
-
-        function stopPlay() {
-            isPlaying = false;
-            document.getElementById('playIcon').className = 'fa-solid fa-play';
-            document.getElementById('playText').textContent = 'Play';
-            if (playInterval) clearInterval(playInterval);
-        }
-
-        // Global Keyboard shortcuts matching Python viewer
-        document.addEventListener('keydown', function(e) {
-            // Prevent shortcuts if typing inside inputs
-            if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
-                return;
-            }
-
-            if (e.key === 'ArrowLeft') {
-                prevFrame();
-            } else if (e.key === 'ArrowRight') {
-                nextFrame();
-            } else if (e.key === 'Home') {
-                currentFrame = 0;
-                updateDisplay();
-            } else if (e.key === 'End') {
-                if (data.length > 0) {
-                    currentFrame = data.length - 1;
-                    updateDisplay();
-                }
-            } else if (e.key === ' ') {
-                e.preventDefault();
-                togglePlay();
-            }
+        document.addEventListener('keydown', (e) => {
+            if (visualizerApp.classList.contains('hidden')) return;
+            if (e.key === 'ArrowLeft') prevFrame();
+            if (e.key === 'ArrowRight') nextFrame();
+            if (e.key === 'Space') { e.preventDefault(); togglePlay(); }
+            if (e.key === 'Home') { currentFrame = 0; updateDisplay(); }
+            if (e.key === 'End') { currentFrame = result_set.length - 1; updateDisplay(); }
         });
 
-        // Initialize clean empty view on startup
-        window.onload = function() {
-            updateDisplay();
-        };
+        // CSV Export Logic (Parity with json_to_csv.py)
+        function exportCSV(singleFrameOnly = false) {
+            if (!rawData) return;
+
+            let csvRows = [];
+            csvRows.push("sep=,");
+
+            // Helper to dump sections like #CONFIG
+            if (rawData.configuration) {
+                let keysRow = ["#CONFIG"];
+                let valsRow = ["#CONFIG"];
+                for (let [k, v] of Object.entries(rawData.configuration)) {
+                    keysRow.push(k);
+                    if (Array.isArray(v)) {
+                        // Format array entries like Python lists: ['0x21', '0x00', '0x08'] and wrap in quotes for CSV column safety
+                        const items = v.map(x => `'${String(x).replace(/^'|'$/g, '')}'`).join(', ');
+                        valsRow.push(`"[${items}]"`);
+                    } else if (typeof v === 'string' && (v.includes(',') || v.includes('"'))) {
+                        valsRow.push(`"${v.replace(/"/g, '""')}"`);
+                    } else {
+                        valsRow.push(v);
+                    }
+                }
+                csvRows.push(keysRow.join(","));
+                csvRows.push(valsRow.join(","));
+            }
+
+            let histogramCounter = 0;
+            const targetFrames = singleFrameOnly ? [result_set[currentFrame]] : result_set;
+
+            targetFrames.forEach(frame => {
+                // 1. Export results (#PIXEL)
+                if (frame.results && frame.results.length > 0 && frame.results[0].length > 0) {
+                    histogramCounter = 0;
+                    let pixel = 0;
+                    let headerKey = ["#PIXEL"];
+
+                    const sampleCell = frame.results[0][0];
+                    if ('noise' in sampleCell) headerKey.push("noise");
+                    if ('xtalk' in sampleCell) headerKey.push("xtalk");
+                    if ('peaks' in sampleCell && Array.isArray(sampleCell.peaks)) {
+                        sampleCell.peaks.forEach((peak, i) => {
+                            if ('distance' in peak) headerKey.push(`distance${i}`);
+                            if ('snr' in peak) headerKey.push(`snr${i}`);
+                            if ('signal' in peak) headerKey.push(`signal${i}`);
+                            if ('x' in peak) headerKey.push(`x${i}`);
+                            if ('y' in peak) headerKey.push(`y${i}`);
+                            if ('z' in peak) headerKey.push(`z${i}`);
+                        });
+                    }
+                    csvRows.push(headerKey.join(","));
+
+                    frame.results.forEach(row => {
+                        row.forEach(cell => {
+                            let pixelStr = String(pixel).padStart(4, '0');
+                            let rowVal = [`#PIXEL${pixelStr}`];
+
+                            if ('noise' in cell) rowVal.push(cell.noise);
+                            if ('xtalk' in cell) rowVal.push(cell.xtalk);
+                            if ('peaks' in cell && Array.isArray(cell.peaks)) {
+                                cell.peaks.forEach(peak => {
+                                    if ('distance' in peak) rowVal.push(peak.distance);
+                                    if ('snr' in peak) rowVal.push(peak.snr);
+                                    if ('signal' in peak) rowVal.push(peak.signal);
+                                    if ('x' in peak) rowVal.push(peak.x);
+                                    if ('y' in peak) rowVal.push(peak.y);
+                                    if ('z' in peak) rowVal.push(peak.z);
+                                });
+                            }
+                            csvRows.push(rowVal.join(","));
+                            pixel++;
+                        });
+                    });
+                }
+
+                // 2. Export mp_histo raw bins (#RAWBIN)
+                if (frame.mp_histo && Array.isArray(frame.mp_histo)) {
+                    let headerKey = ["#RAWBIN"];
+                    for (let i = 0; i < 64; i++) {
+                        headerKey.push(i);
+                    }
+                    csvRows.push(headerKey.join(","));
+
+                    frame.mp_histo.forEach(mp_data => {
+                        if (Array.isArray(mp_data)) {
+                            mp_data.forEach(histogram => {
+                                let rawStr = String(histogramCounter).padStart(3, '0');
+                                let rowVal = [`#RAW${rawStr}`];
+                                histogramCounter++;
+
+                                if (histogram.bin && Array.isArray(histogram.bin)) {
+                                    histogram.bin.forEach(v => rowVal.push(v));
+                                }
+                                csvRows.push(rowVal.join(","));
+                            });
+                        }
+                    });
+                }
+            });
+
+            // Trigger file download
+            const csvString = csvRows.join("\n");
+            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            
+            const suffix = singleFrameOnly ? `_frame_${currentFrame}.csv` : '.csv';
+            a.href = url;
+            a.download = `tmf8829_export${suffix}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
     </script>
 </body>
 </html>
