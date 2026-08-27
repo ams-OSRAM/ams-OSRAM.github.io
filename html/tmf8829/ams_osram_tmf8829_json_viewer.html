@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TMF8829 Log Viewer & CSV Exporter 2v0</title>
+    <title>TMF8829 Log Viewer & CSV Exporter 2v1</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Pako library for client-side gzip decompression -->
@@ -39,7 +39,7 @@
         <div class="flex items-center space-x-3">
             <i class="fa-solid fa-microchip text-emerald-400 text-2xl"></i>
             <div>
-                <h1 class="text-lg font-bold tracking-wide">TMF8829 Log Viewer & Converter 2v0</h1>
+                <h1 class="text-lg font-bold tracking-wide">TMF8829 Log Viewer & Converter 2v1</h1>
                 <p class="text-xs text-slate-400">Interactive ToF Sensor Data Analysis & CSV Exporter</p>
             </div>
         </div>
@@ -67,7 +67,7 @@
     </header>
 
     <!-- Main Container -->
-    <main class="flex-1 max-w-[1600px] w-full mx-auto p-4 flex flex-col gap-4">
+    <main class="flex-1 w-full mx-auto p-4 flex flex-col gap-4">
 
         <!-- File Upload Drag and Drop Zone (Visible when no data loaded) -->
         <div id="dropZone" class="bg-white border-2 border-dashed border-slate-300 rounded-xl p-12 text-center shadow-sm transition-colors hover:border-emerald-500 cursor-pointer">
@@ -562,24 +562,24 @@
                                 let peakLines = [];
 
                                 if (displayOptions.showDistance) {
-                                    peakLines.push(`d${peakNum}:${String(peak.distance).padStart(7, ' ')}`);
+                                    peakLines.push(`d${peakNum}:${peak.distance}`);
                                 }
                                 if (displayOptions.showSNR) {
-                                    peakLines.push(`c${peakNum}:${String(snr).padStart(7, ' ')}`);
+                                    peakLines.push(`c${peakNum}:${snr}`);
                                 }
                                 if (displayOptions.showSignal) {
-                                    peakLines.push(`s${peakNum}:${String(peak.signal).padStart(7, ' ')}`);
+                                    peakLines.push(`s${peakNum}:${peak.signal}`);
                                 }
                                 if (displayOptions.showXYZ) {
                                     const xText = parseFloat(peak.x).toFixed(1);
                                     const yText = parseFloat(peak.y).toFixed(1);
                                     const zText = parseFloat(peak.z).toFixed(1);
-                                    peakLines.push(`x${peakNum}:${xText.padStart(7, ' ')}`);
-                                    peakLines.push(`y${peakNum}:${yText.padStart(7, ' ')}`);
-                                    peakLines.push(`z${peakNum}:${zText.padStart(7, ' ')}`);
+                                    peakLines.push(`x${peakNum}:${xText}`);
+                                    peakLines.push(`y${peakNum}:${yText}`);
+                                    peakLines.push(`z${peakNum}:${zText}`);
                                 }
 
-                                peakDiv.innerHTML = peakLines.map(line => `<div class="whitespace-pre">${line}</div>`).join('');
+                                peakDiv.innerHTML = peakLines.map(line => `<div class="whitespace-pre text-left">${line}</div>`).join('');
                                 dataDiv.appendChild(peakDiv);
                                 hasData = true;
                             });
