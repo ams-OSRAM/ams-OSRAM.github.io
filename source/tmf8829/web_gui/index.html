@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TMF8829 Shield Board Web App Viewer</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header>
+  <h1>ams OSRAM | <a class="board-link" href="https://ams-osram.com/products/boards-kits-accessories/kits/ams-tmf8829-evm-eb-shield-evaluation-kit" target="_blank" rel="noopener noreferrer">TMF8829 Shield Board</a> Web App Viewer</h1>
+  <span>V1.0</span>
+  <span id="status">Disconnected</span>
+</header>
+
+<div id="envWarning" class="banner" hidden></div>
+
+<!-- Classic script: it still runs when the ES modules below fail to load. -->
+<script>
+(function () {
+  var banner = document.getElementById('envWarning');
+  function warn(html) {
+    if (!banner.hidden) return;
+    banner.innerHTML = html;
+    banner.hidden = false;
+  }
+  window.addEventListener('error', function (event) {
+    if (event.target && event.target.tagName === 'SCRIPT') {
+      warn('<strong>Failed to load ' + event.target.src + '.</strong> Serve the folder over HTTP, or use the ' +
+           'self-contained <code>tmf8829_web_app_viewer.html</code> build instead.');
+    }
+  }, true);
+  document.addEventListener('DOMContentLoaded', function () {
+    if (!('serial' in navigator)) {
+      warn('<strong>Web Serial is not available.</strong> Use Chrome or Edge on a desktop platform.');
+    } else if (location.protocol === 'file:' && !document.getElementById('embeddedFirmware')) {
+      warn('<strong>This page must be served over HTTP.</strong> Chrome blocks ES modules and ' +
+           '<code>fetch()</code> on <code>file://</code> pages. Either run <code>python -m http.server 8000</code> ' +
+           'in the repository root and open <a href="http://localhost:8000/webapp/">http://localhost:8000/webapp/</a>, ' +
+           'or build the self-contained <code>tmf8829_web_app_viewer.html</code> with <code>python webapp/build.py</code>.');
+    }
+  });
+})();
+</script>
+
+<main>
+  <aside class="panel-column">
+
+    <section class="panel panel-collapsible" id="panelSetup">
+      <div class="view-header">
+        <h2>1 &middot; Shield board &amp; firmware</h2>
+        <button id="toggleSetup" class="section-toggle" type="button" aria-controls="setupBody" aria-expanded="true">Hide</button>
+      </div>
+      <div id="setupBody" class="panel-body">
+        <div class="row">
+          <label for="spiSpeed">SPI clock (kHz)</label>
+          <input id="spiSpeed" type="number" value="20000" min="100" max="25000" step="100">
+        </div>
+        <div class="buttons">
+          <button id="connect" class="primary">Connect</button>
+          <button id="connectUsb">Connect (Web USB)</button>
+          <button id="disconnect">Disconnect</button>
+        </div>
+        <p class="hint">Use <strong>Connect (Web USB)</strong> on Android phones or when Web Serial is unavailable.</p>
+        <pre id="boardInfo" class="info"></pre>
+
+        <hr>
+
+        <div class="row">
+          <label for="hexFile">Image (optional)</label>
+          <input id="hexFile" type="file" accept=".hex">
+        </div>
+        <p class="hint" id="firmwareHint">By default <code>tmf8829/hex/tmf8829_application.hex</code> is fetched from the server.</p>
+        <div class="buttons">
+          <button id="initialize" class="primary">Enable &amp; download</button>
+        </div>
+        <pre id="deviceInfo" class="info"></pre>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>2 &middot; Configuration</h2>
+      <div class="row">
+        <label for="preConfig">Configuration</label>
+        <select id="preConfig">
+          <option value="64:0">8x8</option>
+          <option value="65:0">8x8 Long Range</option>
+          <option value="66:0">8x8 High Accuracy</option>
+          <option value="64:1">8x8 Dual Mode</option>
+          <option value="65:1">8x8 Long Range Dual Mode</option>
+          <option value="73:0">8x8 Extended Range</option>
+          <option value="67:0" selected>16x16</option>
+          <option value="68:0">16x16 High Accuracy</option>
+          <option value="67:1">16x16 Dual Mode</option>
+          <option value="69:0">32x32</option>
+          <option value="70:0">32x32 High Accuracy</option>
+          <option value="69:1">32x32 Dual Mode</option>
+          <option value="71:0">48x32</option>
+          <option value="72:0">48x32 High Accuracy</option>
+          <option value="71:1">48x32 Dual Mode</option>
+        </select>
+      </div>
+
+      <hr>
+
+      <div class="row">
+        <label for="period">Period (ms)</label>
+        <input id="period" type="number" value="100" min="0" max="65535">
+      </div>
+      <div class="row">
+        <label for="iterations">Kilo iterations</label>
+        <div class="slider-field">
+          <input id="iterationsSlider" type="range" min="50" max="10000" step="50" value="1800">
+          <input id="iterations" type="number" value="1800" min="50" max="10000" step="50">
+        </div>
+      </div>
+      <div class="row" id="haIterationsRow" hidden>
+        <label for="highAccuracyIterations">High accuracy iterations (k)</label>
+        <input id="highAccuracyIterations" type="number" value="100" min="1" max="65535">
+      </div>
+      <div class="row">
+        <label for="nrPeaks">Peaks per pixel</label>
+        <select id="nrPeaks">
+          <option value="1" selected>1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+        </select>
+      </div>
+      <div class="row">
+        <label for="confidence">Confidence threshold</label>
+        <input id="confidence" type="number" value="6" min="0" max="255">
+      </div>
+      <div class="row checkboxes">
+        <label><input id="signalStrength" type="checkbox"> Signal</label>
+        <label><input id="noiseStrength" type="checkbox" checked> Noise</label>
+        <label><input id="xtalk" type="checkbox"> Crosstalk</label>
+        <label><input id="fullNoise" type="checkbox"> Full noise</label>
+        <label><input id="histograms" type="checkbox"> Histograms</label>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>3 &middot; Measurement</h2>
+      <div class="buttons">
+        <button id="start" class="primary">Start</button>
+        <button id="stop">Stop</button>
+      </div>
+    </section>
+  </aside>
+
+  <section class="view">
+    <div class="panel panel-collapsible" id="panelPointCloud">
+      <div class="view-header">
+        <h2>3D point cloud</h2>
+        <div class="view-header-actions">
+          <p id="pointCloudInfo" class="info-line">Drag or one finger to rotate, wheel or pinch to zoom</p>
+          <button id="togglePointCloud" class="section-toggle" type="button" aria-controls="pointCloudBody" aria-expanded="true">Hide</button>
+        </div>
+      </div>
+      <div id="pointCloudBody" class="panel-body">
+        <div class="point-cloud-filter">
+          <label for="pointCloudMaxDistance">Max distance</label>
+          <input id="pointCloudMaxDistance" type="range" min="100" max="10000" step="50" value="4000">
+          <span id="pointCloudMaxDistanceValue">4000 mm</span>
+        </div>
+        <canvas id="pointCloud" width="640" height="420"></canvas>
+        <canvas id="pointCloudColorBar" width="640" height="30"></canvas>
+      </div>
+    </div>
+
+    <div class="panel panel-collapsible" id="panelPixelMap">
+      <div class="view-header">
+        <h2>Pixel map</h2>
+        <button id="togglePixelMap" class="section-toggle" type="button" aria-controls="pixelMapBody" aria-expanded="false">Show</button>
+      </div>
+      <div id="pixelMapBody" class="panel-body" hidden>
+        <div class="view-controls">
+          <select id="mapSource">
+            <option value="distance">Distance</option>
+            <option value="snr">SNR</option>
+            <option value="signal">Signal</option>
+            <option value="noise">Noise</option>
+            <option value="xtalk">Crosstalk</option>
+          </select>
+          <label><input id="autoScale" type="checkbox" checked> Auto scale</label>
+          <input id="scaleMin" type="number" value="0" title="Scale minimum">
+          <input id="scaleMax" type="number" value="2000" title="Scale maximum">
+        </div>
+        <canvas id="pixelMap" width="640" height="440"></canvas>
+        <canvas id="colorBar" width="640" height="30"></canvas>
+        <p id="frameInfo" class="info-line"></p>
+        <pre id="pixelInfo" class="info"></pre>
+      </div>
+    </div>
+
+    <div class="panel panel-collapsible" id="panelHistogram">
+      <div class="view-header">
+        <h2 id="refHistogramTitle">Histograms</h2>
+        <button id="toggleHistogram" class="section-toggle" type="button" aria-controls="histogramBody" aria-expanded="false">Show</button>
+      </div>
+      <div id="histogramBody" class="panel-body" hidden>
+        <p id="histogramDisabledNotice" class="info-line notice-warning" hidden>
+          Histograms are currently disabled in the sensor configuration.
+        </p>
+        <div class="view-controls">
+          <label><input id="histLogScale" type="checkbox"> Log scale</label>
+          <label><input id="histAutoScale" type="checkbox" checked> Auto scale</label>
+          <input id="histScaleMax" type="number" value="100000" min="1" title="Scale maximum">
+        </div>
+        <canvas id="pixelHistogram" width="640" height="200"></canvas>
+        <canvas id="refHistogram" width="640" height="200"></canvas>
+      </div>
+    </div>
+
+    <div class="panel panel-collapsible" id="panelLog">
+      <div class="view-header">
+        <h2>Log</h2>
+        <div class="view-header-actions">
+          <button id="clearLog">Clear</button>
+          <button id="toggleLog" class="section-toggle" type="button" aria-controls="logBody" aria-expanded="true">Hide</button>
+        </div>
+      </div>
+      <div id="logBody" class="panel-body">
+        <pre id="log" class="log"></pre>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

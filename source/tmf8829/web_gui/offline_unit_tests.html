@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TMF8829 Shield Board Web App Viewer &middot; self test</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header><h1>Self test</h1><span><a href="index.html">back to viewer</a></span></header>
+
+<div class="banner">
+  <strong>Open this page in the integrated viewer.</strong> The self test fails in Chrome, which blocks
+  the ES modules and the <code>fetch()</code> of the firmware image this page relies on. Use the built-in
+  browser of the editor, or serve the repository over HTTP with <code>python -m http.server 8000</code>.
+</div>
+
+<main style="grid-template-columns: minmax(0, 1fr);">
+  <section class="panel">
+    <h2>Results</h2>
+    <pre id="output" class="info"></pre>
+  </section>
+</main>
+
+<!-- Classic script: it still runs when the ES module below is blocked or fails to load. -->
+<script>
+(function () {
+  var output = document.getElementById('output');
+  function report(text) {
+    if (output.textContent.trim() !== '') return;
+    output.textContent = text;
+  }
+  window.addEventListener('error', function (event) {
+    if (event.target && event.target.tagName === 'SCRIPT') {
+      report('The test module failed to load: ' + event.target.src + '\n');
+    }
+  }, true);
+  window.addEventListener('load', function () {
+    setTimeout(function () {
+      report('The test module did not run.\n\n' + (location.protocol === 'file:'
+        ? 'Chrome blocks ES modules on file:// pages. Serve the repository over HTTP:\n'
+          + '  python -m http.server 8000\n'
+          + 'and open http://localhost:8000/webapp/selftest.html\n'
+        : 'Check the browser console for the import error.\n'));
+    }, 500);
+  });
+})();
+</script>
+
+<script type="module">
+import { crc16ccitt } from './js/crc16.js';
+import { CoreFw } from './js/corefw.js';
+import { parseIntelHex } from './js/intelhex.js';
+import { histogramFrameDataSize, pixelResultSize, resultFrameDataSize, framesPerMeasurement } from './js/frames.js';
+import { FpMode } from './js/registers.js';
+
+const output = document.getElementById('output');
+let failures = 0;
+
+function check(name, actual, expected) {
+  const ok = String(actual) === String(expected);
+  if (!ok) failures++;
+  output.textContent += `${ok ? 'PASS' : 'FAIL'}  ${name}: ${actual}${ok ? '' : ` (expected ${expected})`}\n`;
+}
+
+try {
+  // Test vector from the Core FW RPC protocol description (v11.0.1).
+  const sample = new Uint8Array([0x55, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00]);
+  check('CRC-16/CCITT-FALSE of the documented example', `0x${crc16ccitt(sample).toString(16)}`, '0x4f25');
+
+  const message = CoreFw.buildMessage(0x01, 0x01, new Uint8Array(0));
+  check('built request length', message.length, 10);
+  check('built request bytes', Array.from(message).map((b) => b.toString(16).padStart(2, '0')).join(' '),
+        '55 01 01 00 00 00 00 00 25 4f');
+
+  // Frame layout helpers, cross checked against tmf8829_application_common.py.
+  check('pixelResultSize(1 peak + noise)', pixelResultSize(0x11), 5);
+  check('pixelResultSize(4 peaks + signal + noise + xtalk)', pixelResultSize(0x3c), 24);
+  check('resultFrameDataSize(16x16, 1 peak + noise)', resultFrameDataSize(FpMode.M16x16, 0x11), 1280);
+  check('resultFrameDataSize(32x32, 1 peak + noise)', resultFrameDataSize(FpMode.M32x32, 0x11), 2560);
+  check('histogramFrameDataSize(16x16)', histogramFrameDataSize(FpMode.M16x16), 25344);
+  check('histogramFrameDataSize(8x8)', histogramFrameDataSize(FpMode.M8x8A), 25344);
+  check('framesPerMeasurement(16x16, no histograms, ref frame)', framesPerMeasurement(FpMode.M16x16, 0, 0, 1), 2);
+  check('framesPerMeasurement(32x32, histograms, ref frame)', framesPerMeasurement(FpMode.M32x32, 1, 0, 1), 12);
+
+  // Intel HEX parser against the shipped application image.
+  try {
+    const response = await fetch('../tmf8829/hex/tmf8829_application.hex');
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const { startAddress, data } = parseIntelHex(await response.text());
+    let sum = 0;
+    for (const byte of data) sum += byte;
+    check('hex start address', `0x${startAddress.toString(16)}`, '0x10000');
+    check('hex image size', data.length, 14444);
+    check('hex byte sum', sum, 1298279);
+    check('hex image word aligned', data.length % 4, 0);
+  } catch (error) {
+    failures++;
+    output.textContent += `FAIL  Intel HEX parser: ${error.message}\n`;
+  }
+} catch (error) {
+  failures++;
+  output.textContent += `FAIL  unexpected error: ${error.message}\n`;
+}
+
+output.textContent += `\n${failures === 0 ? 'All checks passed.' : `${failures} check(s) failed.`}\n`;
+</script>
+</body>
+</html>
