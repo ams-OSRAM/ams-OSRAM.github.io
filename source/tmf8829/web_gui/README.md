@@ -77,6 +77,8 @@ On Android, where Web Serial is unavailable, the app can also connect over the
 separate *Connect (USB)* button, reaching the board's USB CDC interface
 (Chromium browsers only).
 
+<img width="300" alt="TMF8829 Web GUI on Android" src="../../../media/tmf8829_web_gui_android.png" />
+
 ## Current behavior
 
 The current web app is optimized for direct bring-up and live inspection:
