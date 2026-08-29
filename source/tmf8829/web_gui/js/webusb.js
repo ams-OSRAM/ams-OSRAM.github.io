@@ -182,13 +182,13 @@ export class WebUsbSerialPort {
       // WebUSB has no way to abort a pending transferIn, so race it against an
       // explicit cancellation promise. When cancelled we report `done`, letting
       // the CoreFw read loop exit cleanly; the orphaned transfer settles later.
-      const transfer = this.device.transferIn(this._endpointIn, this._endpointInPacketSize)
+      const transfer = this.device.transferIn(this._endpointIn, 16384)
         .then((result) => {
           if (result.status === 'stall') {
             return this.device.clearHalt('in', this._endpointIn)
               .then(() => ({ value: new Uint8Array(0), done: false }));
           }
-          return { value: new Uint8Array(result.data.buffer), done: false };
+          return { value: new Uint8Array(result.data.buffer, result.data.byteOffset, result.data.byteLength), done: false };
         })
         .catch(() => ({ value: undefined, done: true }));
 

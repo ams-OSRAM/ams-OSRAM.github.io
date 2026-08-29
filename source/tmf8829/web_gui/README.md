@@ -18,6 +18,7 @@ has been ported to JavaScript:
 | Layer | File | Python counterpart |
 | --- | --- | --- |
 | CRC-16/CCITT-FALSE | [js/crc16.js](js/crc16.js) | `corefw_client` |
+| WebUSB CDC-ACM transport (Android) | [js/webusb.js](js/webusb.js) | `pyserial` |
 | Core FW RPC framing | [js/corefw.js](js/corefw.js) | `corefw_c` |
 | EVM-H5 SPI / PIO + register HAL | [js/h5.js](js/h5.js) | `aos_com/h5_com.py`, `aos_com/spi_hal_register_io.py` |
 | Register maps | [js/registers.js](js/registers.js) | `tmf8829_host_regs.py`, `tmf8829_application_registers.py`, `tmf8829_config_page.py` |

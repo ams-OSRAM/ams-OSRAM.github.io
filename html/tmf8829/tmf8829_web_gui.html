@@ -14,8 +14,8 @@
   --border-strong: #cbd5e1;
   --text: #1a1a1a;
   --muted: #64748b;
-  --accent: #ff6b00;
-  --accent-2: #e05e00;
+  --accent: #fd5000;
+  --accent-2: #de4600;
   --warning-bg: #fffbeb;
   --warning-border: #fcd34d;
   --warning-text: #92400e;
@@ -28,7 +28,7 @@ body {
   color: var(--text);
   font: 14px/1.5 "Aptos", "Segoe UI", sans-serif;
   background:
-    radial-gradient(900px 500px at 0% -10%, rgba(255, 107, 0, 0.08), transparent 62%),
+    radial-gradient(900px 500px at 0% -10%, rgba(253, 80, 0, 0.08), transparent 62%),
     linear-gradient(135deg, #fbf8f3 0%, #f8fafc 52%, #eef2f7 100%);
   min-height: 100vh;
   position: relative;
@@ -138,7 +138,7 @@ main {
   right: 14px;
   top: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 107, 0, 0.42), transparent);
+  background: linear-gradient(90deg, transparent, rgba(253, 80, 0, 0.42), transparent);
   pointer-events: none;
 }
 
@@ -190,7 +190,7 @@ input:focus,
 select:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(255, 107, 0, 0.14);
+  box-shadow: 0 0 0 3px rgba(253, 80, 0, 0.14);
 }
 
 /* Keep the native dropdown list readable across browser/OS themes. */
@@ -238,21 +238,21 @@ button {
 button:hover:not(:disabled) {
   border-color: var(--accent);
   transform: translateY(-1px);
-  box-shadow: 0 5px 12px rgba(255, 107, 0, 0.12);
+  box-shadow: 0 5px 12px rgba(253, 80, 0, 0.12);
 }
 
 button:active:not(:disabled) { transform: translateY(0); }
 button:disabled { opacity: 0.45; cursor: not-allowed; }
 
 button.primary {
-  background: linear-gradient(135deg, #ff6b00, #ff8c00);
-  border-color: #ff6b00;
+  background: linear-gradient(135deg, #fd5000, #fd7100);
+  border-color: #fd5000;
   color: #ffffff;
-  box-shadow: 0 6px 16px rgba(255, 107, 0, 0.18);
+  box-shadow: 0 6px 16px rgba(253, 80, 0, 0.18);
 }
 
 button.primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #e05e00, #e07b00);
+  background: linear-gradient(135deg, #de4600, #de6300);
 }
 
 .buttons { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
@@ -473,7 +473,7 @@ canvas {
 <body>
 <header>
   <h1>ams OSRAM | <a class="board-link" href="https://ams-osram.com/products/boards-kits-accessories/kits/ams-tmf8829-evm-eb-shield-evaluation-kit" target="_blank" rel="noopener noreferrer">TMF8829 Shield Board</a> Web App Viewer</h1>
-  <span>V1.0</span>
+  <span>V1.1</span>
   <span id="status">Disconnected</span>
 </header>
 
@@ -3664,13 +3664,13 @@ class WebUsbSerialPort {
       // WebUSB has no way to abort a pending transferIn, so race it against an
       // explicit cancellation promise. When cancelled we report `done`, letting
       // the CoreFw read loop exit cleanly; the orphaned transfer settles later.
-      const transfer = this.device.transferIn(this._endpointIn, this._endpointInPacketSize)
+      const transfer = this.device.transferIn(this._endpointIn, 16384)
         .then((result) => {
           if (result.status === 'stall') {
             return this.device.clearHalt('in', this._endpointIn)
               .then(() => ({ value: new Uint8Array(0), done: false }));
           }
-          return { value: new Uint8Array(result.data.buffer), done: false };
+          return { value: new Uint8Array(result.data.buffer, result.data.byteOffset, result.data.byteLength), done: false };
         })
         .catch(() => ({ value: undefined, done: true }));
 
