@@ -23,7 +23,7 @@ in a browser that supports WebSerial (Chrome, Edge or another Chromium based bro
 
 The same file runs on **Android** using WebUSB as well.
 
-![TMF8829 Web GUI](./media/tmf8829_web_gui.gif)
+[![TMF8829 Web GUI](./media/tmf8829_web_gui.gif)](https://ams-osram.github.io/tmf8829/tmf8829_web_gui.html)
 
 
 ## TMF8829 JSON Logfile viewer and CSV exporter
@@ -32,10 +32,10 @@ The TMF8829 GUI and logger create .json/json.gz file - these file can be viewed 
 to CSV format, which can be used with e.g. excel, all inside a webbrower with
 https://ams-osram.github.io/tmf8829/ams_osram_tmf8829_json_viewer.html
 
-![JSON Viewer Screenshot](./media/tmf8829_json_viewer.png)
+[![JSON Viewer Screenshot](./media/tmf8829_json_viewer.png)](https://ams-osram.github.io/tmf8829/ams_osram_tmf8829_json_viewer.html)
 
 ## TMF8829 FoV calcuation
 
 You can run the tool with https://ams-osram.github.io/tmf8829/ams_osram_tmf8829_fov_calculator.html
 
-<img width="1327" height="1011" alt="image" src="https://github.com/user-attachments/assets/ad627b1d-5e61-4d7d-9d14-7e44a0a088df" />
+<a href="https://ams-osram.github.io/tmf8829/ams_osram_tmf8829_fov_calculator.html"><img width="1327" height="1011" alt="TMF8829 FoV Calculator" src="https://github.com/user-attachments/assets/ad627b1d-5e61-4d7d-9d14-7e44a0a088df" /></a>
