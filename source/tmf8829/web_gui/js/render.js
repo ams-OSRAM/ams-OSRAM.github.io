@@ -92,11 +92,19 @@ export function drawColorBar(canvas, min, max, unit) {
   context.fillText(`${max.toFixed(0)} ${unit}`, width - 2, gradientHeight + 3);
 }
 
+/** Rounds a raw axis step up to the next 1 / 2 / 5 * 10^n value. */
+function niceStep(rawStep) {
+  const magnitude = 10 ** Math.floor(Math.log10(Math.max(rawStep, 1e-9)));
+  const normalised = rawStep / magnitude;
+  const factor = normalised <= 1 ? 1 : normalised <= 2 ? 2 : normalised <= 5 ? 5 : 10;
+  return factor * magnitude;
+}
+
 /** Draws one or more histogram series as line plots. */
 export function drawHistogram(canvas, series, { title = '', logScale = false, max = null } = {}) {
   const context = canvas.getContext('2d');
   const { width, height } = canvas;
-  const padding = { left: 46, right: 8, top: 18, bottom: 22 };
+  const padding = { left: 46, right: 12, top: 18, bottom: 34 };
   context.clearRect(0, 0, width, height);
   context.fillStyle = '#454b52';
   context.fillRect(0, 0, width, height);
@@ -120,6 +128,10 @@ export function drawHistogram(canvas, series, { title = '', logScale = false, ma
   };
   const axisValue = (fraction) => (logScale ? 10 ** (fraction * logMax) - 1 : maxValue * fraction);
 
+  const lastBin = Math.max(1, bins - 1);
+  const binX = (bin) => padding.left + (plotWidth * bin) / lastBin;
+  const binStep = Math.max(1, Math.round(niceStep(lastBin / 8)));
+
   // Grid and axes.
   context.strokeStyle = '#899199';
   context.lineWidth = 1;
@@ -131,6 +143,15 @@ export function drawHistogram(canvas, series, { title = '', logScale = false, ma
   }
   context.stroke();
 
+  context.strokeStyle = '#6e767e';
+  context.beginPath();
+  for (let bin = 0; bin <= lastBin; bin += binStep) {
+    const x = Math.round(binX(bin)) + 0.5;
+    context.moveTo(x, padding.top);
+    context.lineTo(x, padding.top + plotHeight);
+  }
+  context.stroke();
+
   context.fillStyle = '#eef0f2';
   context.font = '11px system-ui, sans-serif';
   context.textAlign = 'right';
@@ -139,11 +160,18 @@ export function drawHistogram(canvas, series, { title = '', logScale = false, ma
     const y = padding.top + (plotHeight * i) / 4;
     context.fillText(Math.round(axisValue((4 - i) / 4)).toString(), padding.left - 5, y);
   }
-  context.textAlign = 'left';
+  context.textAlign = 'center';
   context.textBaseline = 'top';
+  for (let bin = 0; bin <= lastBin; bin += binStep) {
+    const label = bin.toString();
+    const half = context.measureText(label).width / 2;
+    const x = Math.min(Math.max(binX(bin), half + 1), width - half - 1);
+    context.fillText(label, x, padding.top + plotHeight + 5);
+  }
+  context.textAlign = 'left';
   context.fillText(title, padding.left, 2);
   context.textAlign = 'center';
-  context.fillText('bin', padding.left + plotWidth / 2, height - 14);
+  context.fillText('bin', padding.left + plotWidth / 2, height - 13);
 
   if (!valid.length) {
     context.textAlign = 'center';
@@ -178,8 +206,8 @@ export function drawHistogram(canvas, series, { title = '', logScale = false, ma
   }
 }
 
-/** Converts one depth pixel into a 3D Cartesian coordinate. */
-export function getPixelXYZ(row, col, distance, itsCols, itsRows, fovCorrection = null) {
+/** Converts one depth pixel into a 3D Cartesian coordinate in millimetres. */
+export function getPixelXYZExact(row, col, distance, itsCols, itsRows, fovCorrection = null) {
   const spanX = (itsCols * 3.0) / 4.0;
   const spanY = itsRows;
   let x;
@@ -196,10 +224,16 @@ export function getPixelXYZ(row, col, distance, itsCols, itsRows, fovCorrection 
   }
 
   const depth = distance / Math.sqrt(1 + x * x + y * y);
+  return { x: depth * x, y: depth * y, z: depth };
+}
+
+/** Converts one depth pixel into a rounded 3D Cartesian coordinate. */
+export function getPixelXYZ(row, col, distance, itsCols, itsRows, fovCorrection = null) {
+  const point = getPixelXYZExact(row, col, distance, itsCols, itsRows, fovCorrection);
   return {
-    x: Math.round(depth * x),
-    y: Math.round(depth * y),
-    z: Math.round(depth),
+    x: Math.round(point.x),
+    y: Math.round(point.y),
+    z: Math.round(point.z),
   };
 }
 

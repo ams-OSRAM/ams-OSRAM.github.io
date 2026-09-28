@@ -9,7 +9,7 @@
 <body>
 <header>
   <h1>ams OSRAM | <a class="board-link" href="https://ams-osram.com/products/boards-kits-accessories/kits/ams-tmf8829-evm-eb-shield-evaluation-kit" target="_blank" rel="noopener noreferrer">TMF8829 Shield Board</a> Web App Viewer</h1>
-  <span>V1.1</span>
+  <span>V1.2</span>
   <span id="status">Disconnected</span>
 </header>
 
@@ -146,6 +146,21 @@
         <button id="start" class="primary">Start</button>
         <button id="stop">Stop</button>
       </div>
+    </section>
+
+    <section class="panel">
+      <h2>4 &middot; Logging</h2>
+      <p class="disclaimer">Only for informational purposes, do not use for analysis of performance or accuracy.</p>
+      <div class="row">
+        <label for="recordFrames">Frames to record</label>
+        <input id="recordFrames" type="number" value="10" min="1" max="100000">
+      </div>
+      <div class="buttons">
+        <button id="record" class="primary">Record</button>
+      </div>
+      <p class="hint">Saves <code>tmf8829_log_&lt;epoch&gt;.json.gz</code> in the EVM log file format.</p>
+      <p class="hint"><a href="https://ams-osram.github.io/tmf8829/ams_osram_tmf8829_json_viewer.html" target="_blank" rel="noopener noreferrer">Analyse logfiles</a></p>
+      <p id="recordStatus" class="info-line">Not recording</p>
     </section>
   </aside>
 

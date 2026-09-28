@@ -258,6 +258,12 @@ hr {
 
 .hint { color: var(--muted); font-size: 12px; margin: 4px 0 8px; }
 
+.disclaimer {
+  color: #b45309;
+  font-size: 12px;
+  margin: 0 0 10px;
+}
+
 code {
   background: #f1f5f9;
   padding: 1px 4px;

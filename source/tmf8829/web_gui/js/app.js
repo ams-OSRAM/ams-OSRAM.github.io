@@ -9,6 +9,7 @@ import { WebUsbSerialPort, isWebUsbSupported, requestWebUsbPort } from './webusb
 import { FP_MODE_NAMES } from './registers.js';
 import { buildHistogramMap, buildPixelMap, parseRefSpadFrame, pixelColumns, pixelRows } from './frames.js';
 import { drawColorBar, drawHeatMap, drawHistogram, drawPointCloud, getPixelXYZ } from './render.js';
+import { HOST_VERSION, LOGGER_VERSION, WEB_GUI_VERSION, MeasurementLogger } from './logging.js';
 
 const EVM_H5_FILTERS = [
   { usbVendorId: 0x1325, usbProductId: 0x1000 },
@@ -39,8 +40,15 @@ class Application {
     this.board = new H5Board(this.corefw);
     this.io = new SpiRegisterIo(this.board);
     this.device = new Tmf8829(this.board, this.io, { onLog: (text) => this.log(text) });
+    this.logger = new MeasurementLogger({
+      onLog: (text) => this.log(text),
+      onChange: () => this.updateRecordingUi(),
+    });
 
     this.hexText = null;
+    this.lastConfig = null;
+    this.firmwareVersion = null;
+    this.serialNumber = null;
     this.running = false;
     this.stopRequested = false;
     this.selectedPixel = null;
@@ -85,6 +93,7 @@ class Application {
     $('initialize').addEventListener('click', () => this.guard(() => this.initialize()));
     $('start').addEventListener('click', () => this.guard(() => this.startMeasurement()));
     $('stop').addEventListener('click', () => { this.stopRequested = true; });
+    $('record').addEventListener('click', () => this.guard(() => this.toggleRecording()));
     $('clearLog').addEventListener('click', () => { $('log').textContent = ''; });
 
     $('hexFile').addEventListener('change', async (event) => {
@@ -299,6 +308,7 @@ class Application {
     $('preConfig').disabled = configLocked;
     $('start').disabled = !this.initialized || this.running;
     $('stop').disabled = !this.running;
+    this.updateRecordingUi();
     this.updateHighAccuracyIterationsVisibility();
   }
 
@@ -661,6 +671,8 @@ class Application {
     });
 
     const serial = await this.device.readSerialNumber();
+    this.firmwareVersion = Array.from(appInfo);
+    this.serialNumber = serial;
     const config = await this.device.loadConfig();
     $('deviceInfo').textContent =
       `Firmware version: ${appInfo[1]}.${appInfo[2]}.${appInfo[3]}\n` +
@@ -673,6 +685,7 @@ class Application {
   }
 
   syncFormFromConfig(config) {
+    this.lastConfig = config;
     $('period').value = config.period;
     $('iterations').value = config.iterations;
     $('iterationsSlider').value = config.iterations;
@@ -779,6 +792,8 @@ class Application {
         this.status('Idle');
         this.measurementRunPromise = null;
 
+        if (this.logger.recording) this.guard(() => this.logger.finish());
+
         if (this.pendingSerialAutoStartup) {
           this.guard(() => this.tryAutoConnectAndInitialize('serial-connect-pending'));
         }
@@ -814,7 +829,50 @@ class Application {
     }
     $('frameInfo').textContent = info;
 
+    if (this.logger.recording) {
+      this.logger.addMeasurement({ resultFrames, histogramFrames });
+      if (this.logger.complete) this.guard(() => this.logger.finish());
+    }
+
     this.redraw();
+  }
+
+  // ------------------------------------------------------------ logging -----
+
+  async toggleRecording() {
+    if (this.logger.recording) {
+      await this.logger.finish();
+      return;
+    }
+    if (!this.initialized || !this.lastConfig) {
+      throw new Error('Download the firmware before recording a log file.');
+    }
+
+    this.logger.start({
+      frames: Number($('recordFrames').value),
+      configPage: this.lastConfig.page,
+      info: {
+        'host version': HOST_VERSION,
+        'fw version': this.firmwareVersion ?? [],
+        'logger version': LOGGER_VERSION,
+        'web_gui_version': WEB_GUI_VERSION,
+        'serial number': this.serialNumber ?? 0,
+      },
+    });
+    this.log(`Recording ${this.logger.requestedFrames} frames into a log file`);
+    if (!this.running) this.guard(() => this.startMeasurement());
+  }
+
+  updateRecordingUi() {
+    const button = $('record');
+    const status = $('recordStatus');
+    if (!button || !status) return;
+
+    button.disabled = !this.initialized;
+    button.textContent = this.logger.recording ? 'Stop & save' : 'Record';
+    status.textContent = this.logger.recording
+      ? `Recording ${this.logger.recordedFrames} / ${this.logger.requestedFrames} frames`
+      : 'Not recording';
   }
 
   redraw() {

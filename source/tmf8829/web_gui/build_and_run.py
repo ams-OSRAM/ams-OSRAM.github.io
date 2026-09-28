@@ -25,6 +25,7 @@ MODULES = [
     "corefw.js",
     "h5.js",
     "render.js",
+    "logging.js",
     "tmf8829.js",
     "webusb.js",
     "app.js",

@@ -51,6 +51,7 @@ import { crc16ccitt } from './js/crc16.js';
 import { CoreFw } from './js/corefw.js';
 import { parseIntelHex } from './js/intelhex.js';
 import { histogramFrameDataSize, pixelResultSize, resultFrameDataSize, framesPerMeasurement } from './js/frames.js';
+import { buildConfiguration } from './js/logging.js';
 import { FpMode } from './js/registers.js';
 
 const output = document.getElementById('output');
@@ -81,6 +82,21 @@ try {
   check('histogramFrameDataSize(8x8)', histogramFrameDataSize(FpMode.M8x8A), 25344);
   check('framesPerMeasurement(16x16, no histograms, ref frame)', framesPerMeasurement(FpMode.M16x16, 0, 0, 1), 2);
   check('framesPerMeasurement(32x32, histograms, ref frame)', framesPerMeasurement(FpMode.M32x32, 1, 0, 1), 12);
+
+  // Log file configuration block, cross checked against an EVM log file.
+  const page = new Uint8Array(0xdf - 0x22 + 1);
+  page[0x22 - 0x22] = 0x21;                              // period 33 ms
+  page[0x24 - 0x22] = 0x08; page[0x25 - 0x22] = 0x07;    // 1800 kilo iterations
+  page[0x2a - 0x22] = 0x39;                              // 1 peak, signal, noise, xtalk
+  page[0x4a - 0x22] = 0x58; page[0x4b - 0x22] = 0x02;    // 600 high accuracy kilo iterations
+  const configuration = buildConfiguration(page);
+  check('configuration period', configuration.period, 33);
+  check('configuration iterations', configuration.iterations, 1800);
+  check('configuration nr_peaks', configuration.nr_peaks, 1);
+  check('configuration xtalk', configuration.xtalk, 1);
+  check('configuration high_accuracy_iterations', configuration.high_accuracy_iterations, 600);
+  check('configuration blob length', configuration.blob.length, 190);
+  check('configuration blob first byte', configuration.blob[0], '0x21');
 
   // Intel HEX parser against the shipped application image.
   try {

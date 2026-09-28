@@ -25,6 +25,7 @@ has been ported to JavaScript:
 | Intel HEX parser | [js/intelhex.js](js/intelhex.js) | `intelhex` |
 | Device / bootloader / application | [js/tmf8829.js](js/tmf8829.js) | `tmf8829_bootloader.py`, `tmf8829_application.py` |
 | Frame parsing | [js/frames.js](js/frames.js) | `tmf8829_application_common.py` |
+| Measurement logging | [js/logging.js](js/logging.js) | `tmf8829_zeromq_client` |
 | Visualisation | [js/render.js](js/render.js), [js/app.js](js/app.js) | `utilities/tmf8829_visualisation.py` |
 
 ## Requirements
@@ -106,6 +107,33 @@ The current web app is optimized for direct bring-up and live inspection:
    initialized.
 4. **Measurement** – measurement may start automatically. The main views are a
    3D point cloud, pixel map, histograms and a log pane.
+5. **Logging** – set the number of frames and press *Record*. Measurement is
+   started if it is not already running, and the recorded frames are written to
+   a `tmf8829_log_<epoch>.json.gz` file in the download folder. *Stop & save*
+   ends the recording early and saves what was recorded so far.
+
+## Log file format
+
+The log file is the gzip compressed JSON format of the TMF8829 EVM logger and
+can be opened with the [JSON viewer](https://ams-osram.github.io/tmf8829/ams_osram_tmf8829_json_viewer.html):
+
+* `configuration` – the config page parameters (named fields plus the raw
+  `blob` of the page bytes from `0x22` to `0xDF`)
+* `info` – host version, firmware version, logger version, `web_gui_version`
+  and serial number
+* `Result_Set` – one entry per recorded measurement with
+  * `info` – `frame_number`, `read_time`, `systick_t0`, `systick_t1`,
+    `temperature` and `warnings`
+  * `results` – `[row][column]` pixels with `noise`, `xtalk` and the `peaks`
+    (`distance` in mm, `snr`, `signal` and the point cloud corrected `x`, `y`,
+    `z`)
+  * `ref_histo` / `mp_histo` – the reference and pixel histograms, only present
+    when histograms are enabled; in dual mode the high accuracy pass is stored
+    in `ref_histo_HA` / `mp_histo_HA`
+
+Fields that are not enabled in the configuration are omitted, exactly as the
+EVM logger does. `read_time` is a host timestamp in microseconds, the EVM
+logger writes the device systick instead.
 
 ## Configuration modes
 
@@ -162,3 +190,29 @@ different send and receive lengths and gives direct control over the chip
 select. Transfers larger than one RPC message (498 bytes out, 2032 bytes in)
 are split into several messages that share a single chip select assertion, so
 large histogram frames can be read in one SPI transaction.
+
+## Changelog
+
+### V1.2
+
+* **Measurement logging** – new *Logging* panel records a selectable number of
+  frames into a `tmf8829_log_<epoch>.json.gz` file in the EVM log file format
+  ([js/logging.js](js/logging.js)). Recording starts the measurement if it is
+  not running, *Stop & save* ends it early, and the panel shows the recording
+  progress.
+* Log files carry the new `web_gui_version` entry in the `info` block, next to
+  host, firmware and logger version.
+* Added a disclaimer to the *Logging* panel: recordings are for informational
+  purposes only and must not be used to analyse performance or accuracy.
+* Added an *Analyse logfiles* link to the
+  [JSON viewer](https://ams-osram.github.io/tmf8829/ams_osram_tmf8829_json_viewer.html).
+* Histogram plots now show rounded bin numbers and vertical grid lines on the
+  x-axis.
+* Offline unit tests cover the log file configuration block against a reference
+  EVM log file.
+
+### V1.1
+
+* First public release of the TMF8829 Shield Board Web App Viewer: Web Serial /
+  WebUSB connection, firmware download, configuration profiles, 3D point cloud,
+  pixel map, pixel inspection and histogram views.
