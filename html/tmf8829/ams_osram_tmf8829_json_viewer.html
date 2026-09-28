@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TMF8829 Log Viewer & CSV Exporter 2v1</title>
+    <title>TMF8829 Log Viewer & CSV Exporter 2v2</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Pako library for client-side gzip decompression -->
@@ -39,7 +39,7 @@
         <div class="flex items-center space-x-3">
             <i class="fa-solid fa-microchip text-emerald-400 text-2xl"></i>
             <div>
-                <h1 class="text-lg font-bold tracking-wide">TMF8829 Log Viewer & Converter 2v1</h1>
+                <h1 class="text-lg font-bold tracking-wide">TMF8829 Log Viewer & Converter 2v2</h1>
                 <p class="text-xs text-slate-400">Interactive ToF Sensor Data Analysis & CSV Exporter</p>
             </div>
         </div>
@@ -141,6 +141,24 @@
                 </button>
             </div>
             <div class="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-4">
+                <div class="flex flex-wrap items-center gap-4 text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                    <label class="flex items-center gap-2">
+                        <span class="font-bold text-slate-700">Y-axis</span>
+                        <select id="modalYAxisType" onchange="updateModalScale()" class="border border-slate-300 rounded px-2 py-1 bg-white">
+                            <option value="linear" selected>Linear</option>
+                            <option value="log">Logarithmic</option>
+                        </select>
+                    </label>
+                    <label class="flex items-center gap-2">
+                        <input id="modalYAutoScale" type="checkbox" checked onchange="updateModalScale()" class="accent-emerald-600">
+                        <span>Auto scale</span>
+                    </label>
+                    <label class="flex items-center gap-2">
+                        <span>Max count</span>
+                        <input id="modalYMax" type="number" min="1" step="1" disabled oninput="updateModalScale()"
+                               class="w-28 border border-slate-300 rounded px-2 py-1 bg-white disabled:bg-slate-100 disabled:text-slate-400">
+                    </label>
+                </div>
                 <div id="modalChart" class="relative w-full flex flex-col items-center"></div>
             </div>
         </div>
@@ -609,12 +627,19 @@
         }
 
         // SVG Histogram Chart Generator
-        function createHistogramChart(bins, width, height, color = '#10b981', showTicks = false) {
+        function createHistogramChart(bins, width, height, color = '#10b981', showTicks = false, options = {}) {
             if (!bins || bins.length === 0) {
                 return `<div style="width:${width}px;height:${height}px;" class="flex items-center justify-center text-slate-300 text-[9px]">No data</div>`;
             }
 
-            const maxValue = Math.max(...bins);
+            const { logScale = false, yMax = null } = options;
+            const dataMax = Math.max(...bins);
+            const maxValue = Math.max(1, (yMax !== null && Number.isFinite(yMax) && yMax > 0) ? yMax : dataMax);
+            const logMax = Math.log10(1 + maxValue);
+            const fractionOf = (value) => {
+                const clamped = Math.max(0, Math.min(maxValue, value));
+                return logScale ? Math.log10(1 + clamped) / logMax : clamped / maxValue;
+            };
             const padding = showTicks ? 45 : 10;
             const chartWidth = width - padding * 2;
             const chartHeight = height - padding * 2;
@@ -627,7 +652,7 @@
             svg += `<line x1="${padding}" y1="${height - padding}" x2="${width - padding}" y2="${height - padding}" stroke="#cbd5e1" stroke-width="1"/>`;
 
             bins.forEach((value, index) => {
-                const barHeight = maxValue > 0 ? (value / maxValue) * chartHeight : 0;
+                const barHeight = fractionOf(value) * chartHeight;
                 const x = padding + index * barWidth;
                 const y = height - padding - barHeight;
                 if (barHeight > 0) {
@@ -646,8 +671,9 @@
 
                 const yTickCount = 5;
                 for (let i = 0; i <= yTickCount; i++) {
-                    const value = Math.round((maxValue / yTickCount) * i);
-                    const y = height - padding - (value / maxValue) * chartHeight;
+                    const fraction = i / yTickCount;
+                    const value = Math.round(logScale ? (10 ** (fraction * logMax)) - 1 : maxValue * fraction);
+                    const y = height - padding - fraction * chartHeight;
                     svg += `<line x1="${padding - 4}" y1="${y}" x2="${padding}" y2="${y}" stroke="#64748b" stroke-width="1"/>`;
                     svg += `<text x="${padding - 6}" y="${y + 3}" text-anchor="end" font-size="10" fill="#64748b" font-family="sans-serif">${value}</text>`;
                 }
@@ -721,14 +747,48 @@
         }
 
         // Modal for Enlarge Histogram View
+        let modalState = { type: '', row: 0, col: 0, bins: [], color: '#10b981', logScale: false, autoScale: true, yMax: null };
+
         function openModal(type, row, col, bins, color) {
             const modal = document.getElementById('histoModal');
             const modalTitle = document.getElementById('modalTitle');
-            const modalChart = document.getElementById('modalChart');
-            const frame = result_set[currentFrame];
+
+            modalState = { type, row, col, bins: bins || [], color, logScale: false, autoScale: true, yMax: null };
+            document.getElementById('modalYAxisType').value = 'linear';
+            document.getElementById('modalYAutoScale').checked = true;
+            const maxInput = document.getElementById('modalYMax');
+            maxInput.disabled = true;
+            maxInput.value = modalState.bins.length ? Math.max(...modalState.bins) : 1;
 
             modalTitle.textContent = `${type} Histogram - Position (${col}, ${row})`;
-            modalChart.innerHTML = createHistogramChart(bins, 700, 450, color, true);
+            renderModalChart();
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function updateModalScale() {
+            const maxInput = document.getElementById('modalYMax');
+            modalState.logScale = document.getElementById('modalYAxisType').value === 'log';
+            modalState.autoScale = document.getElementById('modalYAutoScale').checked;
+            maxInput.disabled = modalState.autoScale;
+
+            if (modalState.autoScale) {
+                modalState.yMax = null;
+                maxInput.value = modalState.bins.length ? Math.max(...modalState.bins) : 1;
+            } else {
+                const value = Number(maxInput.value);
+                modalState.yMax = Number.isFinite(value) && value > 0 ? value : null;
+            }
+            renderModalChart();
+        }
+
+        function renderModalChart() {
+            const modalChart = document.getElementById('modalChart');
+            const { row, col, bins, color, logScale, yMax } = modalState;
+            const frame = result_set[currentFrame];
+
+            modalChart.innerHTML = createHistogramChart(bins, 700, 450, color, true, { logScale, yMax });
 
             if (bins && bins.length > 0) {
                 let maxCount = 0;
@@ -746,7 +806,7 @@
                 modalChart.appendChild(annotation);
             }
 
-            if (frame.results && frame.results[row] && frame.results[row][col]) {
+            if (frame && frame.results && frame.results[row] && frame.results[row][col]) {
                 const cellData = frame.results[row][col];
                 if (cellData.peaks && cellData.peaks.length > 0) {
                     const peakInfo = document.createElement('div');
@@ -766,9 +826,6 @@
                     modalChart.appendChild(peakInfo);
                 }
             }
-
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
         }
 
         function closeModal() {
