@@ -9,6 +9,9 @@
 - [TMF8829 FoV Calculation](#tmf8829-fov-calculation): 
   [tmf8829_fov_calculator.html](https://ams-osram.github.io/tmf8829/ams_osram_tmf8829_fov_calculator.html)
 
+- [TMF8806 Power Calculator](#tmf8806-power-calculator): 
+  [tmf8806_power_calculator.html](https://ams-osram.github.io/tmf8806/tmf8806_power_calculator.html)
+
 
 ## TMF8829 Shield Board Web GUI
 
@@ -64,3 +67,15 @@ https://ams-osram.github.io/tmf8829/ams_osram_tmf8829_json_viewer.html
 You can run the tool with https://ams-osram.github.io/tmf8829/ams_osram_tmf8829_fov_calculator.html
 
 <a href="https://ams-osram.github.io/tmf8829/ams_osram_tmf8829_fov_calculator.html"><img width="1327" height="1011" alt="TMF8829 FoV Calculator" src="https://github.com/user-attachments/assets/ad627b1d-5e61-4d7d-9d14-7e44a0a088df" /></a>
+
+## TMF8806 Power Calculator
+
+Calculates the average VDD current of the [TMF8806](https://ams-osram.com/tmf8806) in ultra low power operation,
+where the device is completely switched off (EN=0) between measurements. Shows average current vs. measurement period
+and iterations for short range (<20 cm) and full range operation, including a breakdown of the measurement cycle.
+A driver implementation for ultra low power operation is available at
+https://github.com/ams-OSRAM/tmf8806_app_arduino_low_power
+
+You can run the tool with https://ams-osram.github.io/tmf8806/tmf8806_power_calculator.html
+
+[![TMF8806 Power Calculator](./media/tmf8806_power_calculator.png)](https://ams-osram.github.io/tmf8806/tmf8806_power_calculator.html)

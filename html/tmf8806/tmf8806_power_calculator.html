@@ -1,0 +1,787 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ams OSRAM - TMF8806 Power Calculator</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            background-color: #fbf8f3;
+            color: #1a1a1a;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        .accent-gradient {
+            background: linear-gradient(135deg, #fd5000 0%, #fd7100 100%);
+        }
+        .param-input {
+            width: 100%;
+            background-color: #f9fafb;
+            border: 1px solid #d1d5db;
+            border-radius: 0.75rem;
+            padding: 0.5rem 3.25rem 0.5rem 0.75rem;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #1f2937;
+        }
+        .param-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px #fd5000;
+        }
+        details > summary { list-style: none; cursor: pointer; }
+        details > summary::-webkit-details-marker { display: none; }
+        details[open] .chevron { transform: rotate(180deg); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200 py-4 px-6 shadow-sm">
+        <div class="max-w-screen-2xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <img id="logo" src="" alt="ams OSRAM" class="h-10 object-contain" />
+                <div class="h-6 w-px bg-gray-300 hidden sm:block"></div>
+                <h1 class="text-lg font-bold tracking-tight text-gray-800">TMF8806 Power Calculator</h1>
+            </div>
+            <div class="text-xs bg-amber-500/10 text-[#fd5000] font-bold py-1 px-3 rounded-full uppercase tracking-wider">
+                Ultra Low Power Operation
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-screen-2xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+            <!-- LEFT PANEL: Configuration Controls -->
+            <div class="lg:col-span-5 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between space-y-6">
+                <div>
+                    <h2 class="text-md font-bold text-gray-900 mb-4 flex items-center gap-2 uppercase tracking-wide">
+                        <i data-lucide="sliders" class="w-5 h-5 text-[#fd5000]"></i>
+                        Operating Settings
+                    </h2>
+
+                    <p class="text-xs text-gray-500 leading-relaxed mb-5">
+                        The TMF8806 is completely switched off between measurements (EN=0) and has a very fast startup time (EN=1).
+                        The average VDD current is calculated per measurement cycle. Power of the host is excluded.
+                        <br />
+                        This does not result in fastest measurement rate but reduces average power consumption.
+                    </p>
+
+                    <div class="flex flex-col gap-2 mb-5 text-xs">
+                        <a href="https://ams-osram.com/tmf8806" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 font-semibold text-gray-700 hover:underline">
+                            <i data-lucide="file-text" class="w-4 h-4"></i>
+                            TMF8806 device description and documentation
+                        </a>
+                        <a href="https://github.com/ams-OSRAM/tmf8806_app_arduino_low_power" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 font-semibold text-gray-700 hover:underline">
+                            <svg class="w-4 h-4 flex-shrink-0" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                            Driver implementation for ultra low power operation (Arduino)
+                        </a>
+                    </div>
+
+                    <!-- Period -->
+                    <div class="mb-5">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Measurement Period</label>
+                        <div class="relative">
+                            <input type="number" step="any" min="0" id="period" class="w-full bg-gray-50 border border-gray-300 rounded-xl pl-4 pr-16 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#fd5000] font-bold text-gray-800" />
+                            <span class="absolute right-4 top-3 text-sm font-bold text-gray-500">s</span>
+                        </div>
+                        <input type="range" id="periodSlider" min="-2" max="1.3010" step="0.001" class="w-full mt-3 accent-[#fd5000]" />
+                        <div class="relative h-4 text-[10px] font-bold text-gray-400 mt-1">
+                            <span class="absolute left-0">10 ms</span>
+                            <span class="absolute -translate-x-1/2" style="left: 30.3%">0.1 s</span>
+                            <span class="absolute -translate-x-1/2" style="left: 60.6%">1 s</span>
+                            <span class="absolute right-0">20 s</span>
+                        </div>
+                        <div class="text-[11px] text-gray-500 mt-2">Measurement rate: <span id="rate_value" class="font-bold text-gray-800">-</span> Hz</div>
+                    </div>
+
+                    <!-- Iterations -->
+                    <div class="mb-5">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Iterations</label>
+                        <div class="relative">
+                            <input type="number" step="1000" min="10000" max="4000000" id="iterations" class="w-full bg-gray-50 border border-gray-300 rounded-xl pl-4 pr-28 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#fd5000] font-bold text-gray-800" />
+                            <span class="absolute right-4 top-3.5 text-[11px] font-bold text-gray-400">capture: <span id="capture_time_label">-</span> ms</span>
+                        </div>
+                        <input type="range" id="iterSlider" min="4" max="6.6021" step="0.001" class="w-full mt-3 accent-[#fd5000]" />
+                        <div class="relative h-4 text-[10px] font-bold text-gray-400 mt-1">
+                            <span class="absolute left-0">10k</span>
+                            <span class="absolute -translate-x-1/2" style="left: 38.4%">100k</span>
+                            <span class="absolute -translate-x-1/2" style="left: 76.9%">1000k</span>
+                            <span class="absolute right-0">4000k</span>
+                        </div>
+                    </div>
+
+                    <!-- Power-down current option -->
+                    <label class="flex items-start gap-3 mb-5 cursor-pointer select-none">
+                        <input type="checkbox" id="includePowerDown" class="mt-0.5 w-4 h-4 accent-[#fd5000]" />
+                        <span class="text-xs text-gray-600 leading-relaxed">
+                            <span class="font-bold text-gray-800">Include power-down current while off</span><br />
+                            Adds I<sub>VDD</sub> power-down (EN=0) for the off time. Unchecked = device is treated as fully off (0 µA).
+                        </span>
+                    </label>
+
+                    <!-- Advanced parameters -->
+                    <details class="border border-gray-200 rounded-xl">
+                        <summary class="flex justify-between items-center px-4 py-3 text-xs font-bold text-gray-600 uppercase tracking-wider">
+                            <span class="flex items-center gap-2"><i data-lucide="settings-2" class="w-4 h-4 text-[#fd5000]"></i>Device Parameters do not change</span>
+                            <i data-lucide="chevron-down" class="chevron w-4 h-4 transition-transform"></i>
+                        </summary>
+                        <div class="px-4 pb-4 space-y-4">
+                            <div>
+                                <h3 class="text-[11px] font-bold text-gray-400 uppercase tracking-widest border-b pb-1 mb-3">Supply Currents</h3>
+                                <div class="grid grid-cols-2 gap-3" id="currentParams"></div>
+                            </div>
+                            <div>
+                                <h3 class="text-[11px] font-bold text-gray-400 uppercase tracking-widest border-b pb-1 mb-3">Phase Timings</h3>
+                                <div class="grid grid-cols-2 gap-3" id="timingParams"></div>
+                            </div>
+                        </div>
+                    </details>
+
+                    <!-- Inline warning message area -->
+                    <div id="validationWarning" class="hidden mt-5 bg-rose-50 text-rose-700 p-4 rounded-xl text-sm border border-rose-100 flex items-center gap-3">
+                        <i data-lucide="alert-triangle" class="w-5 h-5 flex-shrink-0 text-rose-500"></i>
+                        <span id="warningMessage"></span>
+                    </div>
+                </div>
+
+                <!-- Control Buttons -->
+                <div class="pt-4 border-t border-gray-100">
+                    <button id="resetBtn" class="w-full accent-gradient hover:opacity-90 text-white font-bold py-3.5 px-4 rounded-xl transition duration-150 text-xs shadow-md shadow-orange-500/10 flex items-center justify-center gap-2">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                        Reset Parameters
+                    </button>
+                </div>
+            </div>
+
+            <!-- RIGHT PANEL -->
+            <div class="lg:col-span-7 space-y-6">
+
+                <!-- Computed Results -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-md font-bold text-gray-900 flex items-center gap-2 uppercase tracking-wide">
+                            <i data-lucide="calculator" class="w-5 h-5 text-[#fd5000]"></i>
+                            Calculated Values
+                        </h2>
+                        <span class="text-xs text-gray-400 font-semibold italic">approximations, excl. host</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div class="space-y-3.5">
+                            <h3 class="text-[11px] font-bold text-sky-700 uppercase tracking-widest border-b pb-1 flex items-center gap-2">
+                                <span class="w-3 h-1 rounded bg-[#1f77d0] block"></span>Short Range (&lt;20 cm)
+                            </h3>
+                            <div class="flex justify-between items-center bg-orange-50/40 p-3 rounded-xl border border-orange-100/60">
+                                <span class="text-xs font-semibold text-orange-950">Average VDD Current</span>
+                                <span class="text-sm font-extrabold text-orange-600"><span id="avg_short">-</span></span>
+                            </div>
+                            <div class="flex justify-between items-center bg-gray-50/70 p-3 rounded-xl border border-gray-100">
+                                <span class="text-xs font-semibold text-gray-600">Charge per Measurement</span>
+                                <span class="text-sm font-bold text-gray-900"><span id="charge_short">-</span> µC</span>
+                            </div>
+                            <div class="flex justify-between items-center bg-gray-50/70 p-3 rounded-xl border border-gray-100">
+                                <span class="text-xs font-semibold text-gray-600">Active Time / Duty Cycle</span>
+                                <span class="text-sm font-bold text-gray-900"><span id="active_short">-</span> ms / <span id="duty_short">-</span>%</span>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3.5">
+                            <h3 class="text-[11px] font-bold text-amber-600 uppercase tracking-widest border-b pb-1 flex items-center gap-2">
+                                <span class="w-3 h-1 rounded bg-[#fbbf24] block"></span>Full Range 
+                            </h3>
+                            <div class="flex justify-between items-center bg-orange-50/40 p-3 rounded-xl border border-orange-100/60">
+                                <span class="text-xs font-semibold text-orange-950">Average VDD Current</span>
+                                <span class="text-sm font-extrabold text-orange-600"><span id="avg_full">-</span></span>
+                            </div>
+                            <div class="flex justify-between items-center bg-gray-50/70 p-3 rounded-xl border border-gray-100">
+                                <span class="text-xs font-semibold text-gray-600">Charge per Measurement</span>
+                                <span class="text-sm font-bold text-gray-900"><span id="charge_full">-</span> µC</span>
+                            </div>
+                            <div class="flex justify-between items-center bg-gray-50/70 p-3 rounded-xl border border-gray-100">
+                                <span class="text-xs font-semibold text-gray-600">Active Time / Duty Cycle</span>
+                                <span class="text-sm font-bold text-gray-900"><span id="active_full">-</span> ms / <span id="duty_full">-</span>%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Phase breakdown -->
+                    <details class="mt-6 border border-gray-200 rounded-xl">
+                        <summary class="flex justify-between items-center px-4 py-3 text-xs font-bold text-gray-600 uppercase tracking-wider">
+                            <span class="flex items-center gap-2"><i data-lucide="list" class="w-4 h-4 text-[#fd5000]"></i>Measurement Cycle Breakdown</span>
+                            <i data-lucide="chevron-down" class="chevron w-4 h-4 transition-transform"></i>
+                        </summary>
+                        <div class="px-4 pb-4 overflow-x-auto">
+                        <table class="w-full text-xs">
+                            <thead>
+                                <tr class="text-[10px] text-gray-400 uppercase tracking-wider text-right">
+                                    <th class="text-left font-bold py-1.5">Phase</th>
+                                    <th class="font-bold py-1.5">Time [ms]</th>
+                                    <th class="font-bold py-1.5">Current [mA]</th>
+                                    <th class="font-bold py-1.5">Short [mA·ms]</th>
+                                    <th class="font-bold py-1.5">Full [mA·ms]</th>
+                                </tr>
+                            </thead>
+                            <tbody id="breakdownBody" class="text-right text-gray-700"></tbody>
+                            <tfoot>
+                                <tr class="border-t border-gray-200 font-bold text-gray-900 text-right">
+                                    <td class="text-left py-1.5">Sum</td>
+                                    <td class="py-1.5" id="sum_time">-</td>
+                                    <td></td>
+                                    <td class="py-1.5" id="sum_short">-</td>
+                                    <td class="py-1.5" id="sum_full">-</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                        </div>
+                    </details>
+                </div>
+
+                <!-- Chart -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
+                        <h2 class="text-md font-bold text-gray-900 flex items-center gap-2 uppercase tracking-wide">
+                            <i data-lucide="line-chart" class="w-5 h-5 text-[#fd5000]"></i>
+                            Average Current vs. Period
+                        </h2>
+                        <div class="flex gap-4 text-xs font-semibold text-gray-500">
+                            <span class="flex items-center gap-1.5"><span class="w-3 h-1 rounded bg-[#1f77d0] block"></span>Short range</span>
+                            <span class="flex items-center gap-1.5"><span class="w-3 h-1 rounded bg-[#fbbf24] block"></span>Full range</span>
+                        </div>
+                    </div>
+                    <div class="relative w-full aspect-video sm:aspect-[2/1] bg-slate-900 rounded-2xl overflow-hidden">
+                        <canvas id="chartCanvas" class="w-full h-full block"></canvas>
+                    </div>
+                    <div class="flex gap-5 mt-3 text-xs font-semibold text-gray-600">
+                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" id="logX" class="w-4 h-4 accent-[#fd5000]" />
+                            Log scale X (period)
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" id="logY" class="w-4 h-4 accent-[#fd5000]" />
+                            Log scale Y (current)
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Reference periods table -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <h2 class="text-md font-bold text-gray-900 mb-4 flex items-center gap-2 uppercase tracking-wide">
+                        <i data-lucide="table" class="w-5 h-5 text-[#fd5000]"></i>
+                        Results at Typical Periods
+                    </h2>
+                    <table class="w-full text-xs overflow-hidden rounded-xl">
+                        <thead class="bg-slate-900 text-white">
+                            <tr>
+                                <th class="py-2.5 px-3 font-bold">Period [s]</th>
+                                <th class="py-2.5 px-3 font-bold">Short range (&lt;20 cm)</th>
+                                <th class="py-2.5 px-3 font-bold">Full range</th>
+                            </tr>
+                        </thead>
+                        <tbody id="refBody" class="text-center text-gray-700"></tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 py-6 px-6 text-center text-sm text-gray-500">
+        <div class="max-w-screen-2xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+            <span>&copy; ams OSRAM AG. All rights reserved.</span>
+            <div class="flex gap-4">
+                <a href="#" class="hover:text-amber-500 font-medium">Full License (MIT)</a>
+                <span class="text-gray-300">|</span>
+                <span class="font-medium text-gray-700">TMF8806 Power Calculator v1.0</span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const logoBase64 = "PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjUwIiB2aWV3Qm94PSIwIDAgMjAwIDUwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjx0ZXh0IHg9IjUiIHk9IjM1IiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjQiIGZpbGw9IiMxYTFhMWEiIGZvbnQtd2VpZ2h0PSJib2xkIj5hbXMgT1NSQU08L3RleHQ+PC9zdmc+";
+
+        const COLOR_SHORT = '#1f77d0';
+        const COLOR_FULL = '#fbbf24';
+        const REF_PERIODS = [0.25, 0.5, 1, 2, 5, 10];
+
+        // Defaults from power.xlsx (sheets power_calc_TMF8806 / parameters_TMF8805)
+        const DEFAULTS = {
+            period: 1,
+            iterations: 10000,
+            includePowerDown: false,
+            iPowerDown: 0.26,      // µA, EN low
+            iWait5MHz: 140,        // µA, CPU off, OSC on 5 MHz
+            iProcessing: 2.7,      // mA, CPU at 80 MHz
+            iRanging: 32.5,        // mA, VCSEL_clk_div2=0, TDCs running
+            tStartHw: 1.5,         // ms
+            tStartSw5: 1.6,        // ms
+            tStartSw80: 0.4,       // ms
+            tConfig: 1.0,          // ms
+            tCalcShort: 5,         // ms, proximity only
+            tCalcFull: 12,         // ms, proximity + distance
+            fCapture: 40           // MHz
+        };
+
+        const CURRENT_PARAMS = [
+            { key: 'iPowerDown',  label: 'Power-down (EN=0)',      unit: 'µA' },
+            { key: 'iWait5MHz',   label: 'Wait, 5 MHz OSC',         unit: 'µA' },
+            { key: 'iProcessing', label: 'Processing, 80 MHz CPU',  unit: 'mA' },
+            { key: 'iRanging',    label: 'Ranging active',          unit: 'mA', hint: '25.2 mA with VCSEL_clk_div2=1' }
+        ];
+        const TIMING_PARAMS = [
+            { key: 'tStartHw',   label: 'Start analog + digital', unit: 'ms' },
+            { key: 'tStartSw5',  label: 'Start SW 5 MHz',         unit: 'ms' },
+            { key: 'tStartSw80', label: 'Start SW 80 MHz',        unit: 'ms' },
+            { key: 'tConfig',    label: 'Config SW (I²C)',        unit: 'ms' },
+            { key: 'tCalcShort', label: 'Calc prox only',         unit: 'ms' },
+            { key: 'tCalcFull',  label: 'Calc prox + distance',   unit: 'ms' },
+            { key: 'fCapture',   label: 'Capture iteration rate', unit: 'MHz' }
+        ];
+
+        const periodInput = document.getElementById('period');
+        const periodSlider = document.getElementById('periodSlider');
+        const iterInput = document.getElementById('iterations');
+        const iterSlider = document.getElementById('iterSlider');
+        const ITER_MIN = 10000;
+        const ITER_MAX = 4000000;
+        const pdCheckbox = document.getElementById('includePowerDown');
+        const warningBox = document.getElementById('validationWarning');
+        const warningMsg = document.getElementById('warningMessage');
+        const chartCanvas = document.getElementById('chartCanvas');
+        const ctx = chartCanvas.getContext('2d');
+
+        function buildParamInputs(containerId, params) {
+            const container = document.getElementById(containerId);
+            params.forEach(p => {
+                const wrap = document.createElement('div');
+                wrap.innerHTML = `
+                    <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1" for="p_${p.key}"></label>
+                    <div class="relative">
+                        <input type="number" step="any" min="0" id="p_${p.key}" class="param-input" />
+                        <span class="absolute right-3 top-2 text-[11px] font-bold text-gray-400"></span>
+                    </div>`;
+                wrap.querySelector('label').textContent = p.label;
+                wrap.querySelector('span').textContent = p.unit;
+                if (p.hint) {
+                    const hint = document.createElement('div');
+                    hint.className = 'text-[10px] text-gray-400 mt-1';
+                    hint.textContent = p.hint;
+                    wrap.appendChild(hint);
+                }
+                container.appendChild(wrap);
+                wrap.querySelector('input').addEventListener('input', performCalculations);
+            });
+        }
+
+        function readParams() {
+            const p = {};
+            for (const def of [...CURRENT_PARAMS, ...TIMING_PARAMS]) {
+                p[def.key] = parseFloat(document.getElementById('p_' + def.key).value);
+            }
+            p.iterations = parseFloat(iterInput.value);
+            p.period = parseFloat(periodInput.value);
+            p.includePowerDown = pdCheckbox.checked;
+            return p;
+        }
+
+        // Phases of one measurement cycle; current in mA, time in ms
+        function buildPhases(p) {
+            const i5 = p.iWait5MHz / 1000;
+            return [
+                { name: 'Start (analog + digital)', t: p.tStartHw,   i: i5,            short: true,  full: true },
+                { name: 'Start SW 5 MHz',           t: p.tStartSw5,  i: i5,            short: true,  full: true },
+                { name: 'Start SW 80 MHz',          t: p.tStartSw80, i: p.iProcessing, short: true,  full: true },
+                { name: 'Config SW (1 MHz I²C)',    t: p.tConfig,    i: p.iProcessing, short: true,  full: true },
+                { name: `Capture (${p.iterations.toLocaleString()} it.)`, t: p.iterations / (p.fCapture * 1e6) * 1000, i: p.iRanging, short: true, full: true },
+                { name: 'Calculate prox only',      t: p.tCalcShort, i: p.iProcessing, short: true,  full: false },
+                { name: 'Calculate prox + distance',t: p.tCalcFull,  i: p.iProcessing, short: false, full: true }
+            ];
+        }
+
+        // Returns charge (mA·ms) and active time (ms) for one measurement in the given mode
+        function cycleCharge(phases, mode) {
+            let q = 0, t = 0;
+            phases.forEach(ph => { if (ph[mode]) { q += ph.t * ph.i; t += ph.t; } });
+            return { q, t };
+        }
+
+        // Cycle can never be shorter than the active time (idle time >= 0)
+        function effectiveCycleMs(cycle, periodS) {
+            return Math.max(periodS * 1000, cycle.t);
+        }
+
+        // Average current in µA (mA·ms / ms * 1000 = µA)
+        function averageCurrent(cycle, periodS, p) {
+            const cycleMs = effectiveCycleMs(cycle, periodS);
+            const offQ = p.includePowerDown ? (cycleMs - cycle.t) * p.iPowerDown / 1000 : 0;
+            return (cycle.q + offQ) / cycleMs * 1000;
+        }
+
+        function fmt(v, digits = 1) {
+            if (!isFinite(v)) return '-';
+            return Number(v.toFixed(digits)).toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+        }
+
+        function fmtCurrent(uA, digits = 1) {
+            return uA > 1000 ? `${fmt(uA / 1000, digits)} mA` : `${fmt(uA, digits)} µA`;
+        }
+
+        function showWarning(msg) {
+            warningMsg.textContent = msg;
+            warningBox.classList.remove('hidden');
+        }
+
+        function clearWarning() {
+            warningBox.classList.add('hidden');
+        }
+
+        function performCalculations() {
+            const p = readParams();
+            const values = Object.entries(p).filter(([k]) => k !== 'includePowerDown').map(([, v]) => v);
+            if (values.some(v => isNaN(v))) {
+                showWarning('Waiting for numeric entries...');
+                return;
+            }
+            if (values.some(v => v < 0) || p.period <= 0 || p.iterations <= 0 || p.fCapture <= 0) {
+                showWarning('Period, iterations and capture rate must be positive; all other parameters must be non-negative.');
+                return;
+            }
+            if (p.iterations < ITER_MIN || p.iterations > ITER_MAX) {
+                showWarning(`Iterations must be between ${ITER_MIN.toLocaleString()} and ${ITER_MAX.toLocaleString()}.`);
+                return;
+            }
+
+            const phases = buildPhases(p);
+            const short = cycleCharge(phases, 'short');
+            const full = cycleCharge(phases, 'full');
+            const minPeriodMs = Math.max(short.t, full.t);
+
+            if (p.period * 1000 < minPeriodMs) {
+                showWarning(`Period too short: one full range measurement takes ${fmt(minPeriodMs, 2)} ms. Idle time is set to 0 and the cycle time is extended to the active time.`);
+            } else {
+                clearWarning();
+            }
+
+            const avgShort = averageCurrent(short, p.period, p);
+            const avgFull = averageCurrent(full, p.period, p);
+
+            document.getElementById('rate_value').textContent = fmt(1 / p.period, 3);
+            document.getElementById('capture_time_label').textContent = fmt(phases[4].t, 3);
+            document.getElementById('avg_short').textContent = fmtCurrent(avgShort);
+            document.getElementById('avg_full').textContent = fmtCurrent(avgFull);
+            document.getElementById('charge_short').textContent = fmt(short.q, 1);
+            document.getElementById('charge_full').textContent = fmt(full.q, 1);
+            document.getElementById('active_short').textContent = fmt(short.t, 2);
+            document.getElementById('active_full').textContent = fmt(full.t, 2);
+            document.getElementById('duty_short').textContent = fmt(short.t / effectiveCycleMs(short, p.period) * 100, 2);
+            document.getElementById('duty_full').textContent = fmt(full.t / effectiveCycleMs(full, p.period) * 100, 2);
+
+            renderBreakdown(phases, p, short, full);
+            renderReferenceTable(short, full, p);
+            renderChart(short, full, p, avgShort, avgFull);
+        }
+
+        function addCell(row, text, cls) {
+            const td = document.createElement('td');
+            td.className = cls || 'py-1.5';
+            td.textContent = text;
+            row.appendChild(td);
+        }
+
+        function renderBreakdown(phases, p, short, full) {
+            const body = document.getElementById('breakdownBody');
+            body.innerHTML = '';
+            phases.forEach(ph => {
+                const tr = document.createElement('tr');
+                tr.className = 'border-t border-gray-100';
+                addCell(tr, ph.name, 'py-1.5 text-left font-semibold text-gray-600');
+                addCell(tr, fmt(ph.t, 3));
+                addCell(tr, fmt(ph.i, 3));
+                addCell(tr, ph.short ? fmt(ph.t * ph.i, 3) : '-');
+                addCell(tr, ph.full ? fmt(ph.t * ph.i, 3) : '-');
+                body.appendChild(tr);
+            });
+
+            const cycleShort = effectiveCycleMs(short, p.period);
+            const cycleFull = effectiveCycleMs(full, p.period);
+            const offShort = cycleShort - short.t;
+            const offFull = cycleFull - full.t;
+            const iOff = p.includePowerDown ? p.iPowerDown / 1000 : 0;
+            const tr = document.createElement('tr');
+            tr.className = 'border-t border-gray-100';
+            addCell(tr, 'Off (EN=0)', 'py-1.5 text-left font-semibold text-gray-600');
+            addCell(tr, `${fmt(offShort, 2)} / ${fmt(offFull, 2)}`);
+            addCell(tr, fmt(iOff, 5));
+            addCell(tr, fmt(offShort * iOff, 3));
+            addCell(tr, fmt(offFull * iOff, 3));
+            body.appendChild(tr);
+
+            document.getElementById('sum_time').textContent = cycleShort === cycleFull
+                ? fmt(cycleShort, 2)
+                : `${fmt(cycleShort, 2)} / ${fmt(cycleFull, 2)}`;
+            document.getElementById('sum_short').textContent = fmt(short.q + offShort * iOff, 3);
+            document.getElementById('sum_full').textContent = fmt(full.q + offFull * iOff, 3);
+        }
+
+        function renderReferenceTable(short, full, p) {
+            const body = document.getElementById('refBody');
+            body.innerHTML = '';
+            REF_PERIODS.forEach((per, idx) => {
+                const tr = document.createElement('tr');
+                tr.className = idx % 2 === 0 ? 'bg-gray-200/70' : 'bg-gray-100/70';
+                if (Math.abs(per - p.period) < 1e-9) tr.className = 'bg-orange-100 font-bold';
+                addCell(tr, String(per), 'py-2 px-3');
+                addCell(tr, fmtCurrent(averageCurrent(short, per, p), 1), 'py-2 px-3');
+                addCell(tr, fmtCurrent(averageCurrent(full, per, p), 1), 'py-2 px-3');
+                body.appendChild(tr);
+            });
+        }
+
+        function niceCeil(v) {
+            if (v <= 0 || !isFinite(v)) return 1;
+            const mag = Math.pow(10, Math.floor(Math.log10(v)));
+            for (const m of [1, 2, 2.5, 5, 10]) {
+                if (v <= m * mag) return m * mag;
+            }
+            return 10 * mag;
+        }
+
+        function renderChart(short, full, p, avgShort, avgFull) {
+            const dpr = window.devicePixelRatio || 1;
+            const width = chartCanvas.clientWidth;
+            const height = chartCanvas.clientHeight;
+            if (chartCanvas.width !== Math.round(width * dpr) || chartCanvas.height !== Math.round(height * dpr)) {
+                chartCanvas.width = Math.round(width * dpr);
+                chartCanvas.height = Math.round(height * dpr);
+            }
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, width, height);
+
+            const pad = { left: 52, right: 20, top: 20, bottom: 40 };
+            const plotW = width - pad.left - pad.right;
+            const plotH = height - pad.top - pad.bottom;
+
+            const logX = document.getElementById('logX').checked;
+            const logY = document.getElementById('logY').checked;
+            const minPeriodS = Math.max(short.t, full.t) / 1000;
+            const decadeFloor = v => Math.pow(10, Math.floor(Math.log10(v)));
+            const decadeCeil = v => Math.pow(10, Math.ceil(Math.log10(v)));
+
+            const xMaxLin = Math.max(10, Math.ceil(p.period));
+            const xMin = logX ? decadeFloor(Math.min(0.01, p.period)) : 0;
+            const xMax = logX ? decadeCeil(xMaxLin) : xMaxLin;
+            const curveStart = cycle => Math.max(cycle.t / 1000, logX ? xMin : 1e-6);
+
+            let yMin, yMax, yTicks, yStep;
+            if (logY) {
+                const yHi = Math.max(
+                    averageCurrent(full, curveStart(full), p),
+                    averageCurrent(short, curveStart(short), p)
+                );
+                let yLo = Math.min(averageCurrent(full, xMax, p), averageCurrent(short, xMax, p));
+                if (!(yLo > 0)) yLo = yHi / 1000;
+                yMin = decadeFloor(yLo);
+                yMax = decadeCeil(yHi);
+                if (yMax <= yMin) yMax = yMin * 10;
+            } else {
+                const yRefPeriod = Math.max(0.25, minPeriodS);
+                const yRaw = Math.max(
+                    averageCurrent(full, yRefPeriod, p),
+                    averageCurrent(short, yRefPeriod, p),
+                    p.period >= minPeriodS ? avgFull : 0
+                ) * 1.05;
+                yStep = niceCeil(yRaw / 6);
+                yTicks = Math.max(1, Math.ceil(yRaw / yStep));
+                yMin = 0;
+                yMax = yTicks * yStep;
+            }
+
+            const xToPx = logX
+                ? x => pad.left + (Math.log10(x) - Math.log10(xMin)) / (Math.log10(xMax) - Math.log10(xMin)) * plotW
+                : x => pad.left + (x - xMin) / (xMax - xMin) * plotW;
+            const yToPx = logY
+                ? y => pad.top + plotH - (Math.log10(y) - Math.log10(yMin)) / (Math.log10(yMax) - Math.log10(yMin)) * plotH
+                : y => pad.top + plotH - (y - yMin) / (yMax - yMin) * plotH;
+
+            const tickLabel = v => String(Number(v.toPrecision(3)));
+            const gridLine = (x1, y1, x2, y2, major) => {
+                ctx.strokeStyle = major ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.04)';
+                ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+            };
+            // Decade ticks with minor 2..9 grid lines
+            const logTicks = (lo, hi) => {
+                const ticks = [];
+                for (let e = Math.round(Math.log10(lo)); e <= Math.round(Math.log10(hi)); e++) {
+                    for (let m = 1; m <= 9; m++) {
+                        const v = m * Math.pow(10, e);
+                        if (v >= lo * 0.999 && v <= hi * 1.001) ticks.push({ v, major: m === 1 });
+                    }
+                }
+                return ticks;
+            };
+
+            // Grid & axes
+            ctx.lineWidth = 1;
+            ctx.font = '10px sans-serif';
+            ctx.textAlign = 'center';
+            const xTicks = logX
+                ? logTicks(xMin, xMax)
+                : (() => {
+                    const step = xMax <= 10 ? 1 : niceCeil(xMax / 10);
+                    const t = [];
+                    for (let x = 0; x <= xMax + 1e-9; x += step) t.push({ v: x, major: true });
+                    return t;
+                })();
+            xTicks.forEach(({ v, major }) => {
+                const px = xToPx(v);
+                gridLine(px, pad.top, px, pad.top + plotH, major);
+                if (major) {
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.fillText(tickLabel(v), px, pad.top + plotH + 14);
+                }
+            });
+
+            const yInMa = yMax > 1000;
+            const yTickList = logY
+                ? logTicks(yMin, yMax)
+                : Array.from({ length: yTicks + 1 }, (_, i) => ({ v: i * yStep, major: true }));
+            ctx.textAlign = 'right';
+            yTickList.forEach(({ v, major }) => {
+                const py = yToPx(v);
+                gridLine(pad.left, py, pad.left + plotW, py, major);
+                if (major) {
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.fillText(logY
+                        ? (v >= 1000 ? `${tickLabel(v / 1000)} mA` : `${tickLabel(v)} µA`)
+                        : tickLabel(yInMa ? v / 1000 : v), pad.left - 6, py + 3);
+                }
+            });
+
+            ctx.fillStyle = '#cbd5e1';
+            ctx.textAlign = 'center';
+            ctx.fillText('Period [s]', pad.left + plotW / 2, height - 6);
+            ctx.save();
+            ctx.translate(12, pad.top + plotH / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText(logY ? 'Average VDD current' : `Average VDD current [${yInMa ? 'mA' : 'µA'}]`, 0, 0);
+            ctx.restore();
+
+            // Curves, clipped to plot area
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(pad.left, pad.top, plotW, plotH);
+            ctx.clip();
+
+            const drawCurve = (cycle, color) => {
+                const start = curveStart(cycle);
+                const steps = 400;
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                for (let s = 0; s <= steps; s++) {
+                    // Log-spaced in log mode, otherwise denser near the steep low-period region
+                    const x = logX
+                        ? start * Math.pow(xMax / start, s / steps)
+                        : start + (xMax - start) * Math.pow(s / steps, 2);
+                    const px = xToPx(x), py = yToPx(averageCurrent(cycle, x, p));
+                    if (s === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+                }
+                ctx.stroke();
+            };
+            drawCurve(full, COLOR_FULL);
+            drawCurve(short, COLOR_SHORT);
+
+            // Current period marker
+            if (p.period >= minPeriodS) {
+                const px = xToPx(p.period);
+                ctx.setLineDash([3, 3]);
+                ctx.strokeStyle = 'rgba(253, 80, 0, 0.8)';
+                ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.moveTo(px, pad.top); ctx.lineTo(px, pad.top + plotH); ctx.stroke();
+                ctx.setLineDash([]);
+                [[avgShort, COLOR_SHORT], [avgFull, COLOR_FULL]].forEach(([v, c]) => {
+                    ctx.fillStyle = c;
+                    ctx.strokeStyle = '#0f172a';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.arc(px, yToPx(v), 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                });
+            }
+            ctx.restore();
+
+            if (p.period >= minPeriodS) {
+                const px = xToPx(p.period);
+                const label = `${fmt(p.period, 2)} s: ${fmtCurrent(avgShort, 1)} / ${fmtCurrent(avgFull, 1)}`;
+                ctx.font = 'bold 11px sans-serif';
+                const tw = ctx.measureText(label).width;
+                const lx = Math.min(Math.max(px + 8, pad.left + 4), pad.left + plotW - tw - 4);
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+                ctx.fillRect(lx - 4, pad.top + 4, tw + 8, 18);
+                ctx.fillStyle = '#ffffff';
+                ctx.textAlign = 'left';
+                ctx.fillText(label, lx, pad.top + 17);
+            }
+        }
+
+        function syncSliderFromPeriod() {
+            const v = parseFloat(periodInput.value);
+            if (v > 0) periodSlider.value = Math.log10(v);
+        }
+
+        function syncSliderFromIterations() {
+            const v = parseFloat(iterInput.value);
+            if (v > 0) iterSlider.value = Math.log10(v);
+        }
+
+        function applyDefaults() {
+            periodInput.value = DEFAULTS.period;
+            iterInput.value = DEFAULTS.iterations;
+            pdCheckbox.checked = DEFAULTS.includePowerDown;
+            [...CURRENT_PARAMS, ...TIMING_PARAMS].forEach(def => {
+                document.getElementById('p_' + def.key).value = DEFAULTS[def.key];
+            });
+            syncSliderFromPeriod();
+            syncSliderFromIterations();
+        }
+
+        periodInput.addEventListener('input', () => { syncSliderFromPeriod(); performCalculations(); });
+        periodSlider.addEventListener('input', () => {
+            const v = Math.pow(10, parseFloat(periodSlider.value));
+            periodInput.value = Number(v.toPrecision(3));
+            performCalculations();
+        });
+        iterInput.addEventListener('input', () => { syncSliderFromIterations(); performCalculations(); });
+        iterSlider.addEventListener('input', () => {
+            const v = Math.round(Math.pow(10, parseFloat(iterSlider.value)) / 1000) * 1000;
+            iterInput.value = Math.min(ITER_MAX, Math.max(ITER_MIN, v));
+            performCalculations();
+        });
+        pdCheckbox.addEventListener('change', performCalculations);
+        document.getElementById('logX').addEventListener('change', performCalculations);
+        document.getElementById('logY').addEventListener('change', performCalculations);
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            applyDefaults();
+            clearWarning();
+            performCalculations();
+        });
+
+        buildParamInputs('currentParams', CURRENT_PARAMS);
+        buildParamInputs('timingParams', TIMING_PARAMS);
+
+        window.addEventListener('load', () => {
+            document.getElementById('logo').src = "data:image/svg+xml;base64," + logoBase64;
+            applyDefaults();
+            performCalculations();
+            lucide.createIcons();
+        });
+
+        window.addEventListener('resize', performCalculations);
+    </script>
+</body>
+</html>
