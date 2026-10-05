@@ -10,6 +10,7 @@ import { FP_MODE_NAMES } from './registers.js';
 import { buildHistogramMap, buildPixelMap, parseRefSpadFrame, pixelColumns, pixelRows } from './frames.js';
 import { drawColorBar, drawHeatMap, drawHistogram, drawPointCloud, getPixelXYZ } from './render.js';
 import { HOST_VERSION, LOGGER_VERSION, WEB_GUI_VERSION, MeasurementLogger } from './logging.js';
+import { HandDetector } from './hand.js';
 
 const EVM_H5_FILTERS = [
   { usbVendorId: 0x1325, usbProductId: 0x1000 },
@@ -44,6 +45,9 @@ class Application {
       onLog: (text) => this.log(text),
       onChange: () => this.updateRecordingUi(),
     });
+    this.handDetector = new HandDetector({ onLog: (text) => this.log(text) });
+    this.handSectionOpened = false;
+    this.handDefaultsPending = false;
 
     this.hexText = null;
     this.lastConfig = null;
@@ -155,6 +159,14 @@ class Application {
     pointCloudCanvas.addEventListener('touchend', (event) => this.onPointCloudTouchEnd(event));
     pointCloudCanvas.addEventListener('touchcancel', (event) => this.onPointCloudTouchEnd(event));
 
+    $('handEnable').addEventListener('change', () => this.updateHandDetection());
+    $('handZMin').addEventListener('input', () => this.updateHandDetection());
+    $('handZMax').addEventListener('input', () => this.updateHandDetection());
+    $('handCanvas').addEventListener('click', () => {
+      $('handEnable').checked = !$('handEnable').checked;
+      this.updateHandDetection();
+    });
+
     const maxDistanceSlider = $('pointCloudMaxDistance');
     const maxDistanceValue = $('pointCloudMaxDistanceValue');
     maxDistanceValue.textContent = `${maxDistanceSlider.value} mm`;
@@ -204,6 +216,12 @@ class Application {
         toggles: [$('togglePointCloud')],
         open: true,
       },
+      hand: {
+        panels: [$('panelHand')],
+        bodies: [$('handBody')],
+        toggles: [$('toggleHand')],
+        open: false,
+      },
       pixelAndHistogram: {
         panels: [$('panelPixelMap'), $('panelHistogram')],
         bodies: [$('pixelMapBody'), $('histogramBody')],
@@ -252,6 +270,36 @@ class Application {
       toggle.textContent = open ? 'Hide' : 'Show';
     }
     this.updateHistogramNotice();
+    if (section === this.viewSections.hand) {
+      if (open && !this.handSectionOpened) {
+        this.handSectionOpened = true;
+        this.handDefaultsPending = true;
+        this.guard(() => this.applyHandDetectionDefaults());
+      }
+      this.updateHandDetection();
+    }
+  }
+
+  async applyHandDetectionDefaults() {
+    if (!this.handDefaultsPending || !this.initialized) return;
+    this.handDefaultsPending = false;
+
+    const wasRunning = this.running;
+    if (wasRunning) {
+      this.stopRequested = true;
+      if (this.measurementRunPromise) await this.measurementRunPromise;
+    }
+
+    $('preConfig').value = '71:0';
+    await this.applyPreConfig();
+    // applyPreConfig reads back device defaults, so set these afterwards.
+    $('iterations').value = '1800';
+    $('iterationsSlider').value = '1800';
+    $('signalStrength').checked = true;
+    await this.applyConfig();
+    this.log('Hand detection: 48x32, 1800k iterations, signal enabled');
+
+    if (wasRunning) this.guard(() => this.startMeasurement());
   }
 
   updateHistogramNotice() {
@@ -682,6 +730,7 @@ class Application {
     this.setState({ initialized: true });
     this.status('Sensor ready');
     this.log('Application firmware started');
+    await this.applyHandDetectionDefaults();
   }
 
   syncFormFromConfig(config) {
@@ -914,6 +963,28 @@ class Application {
     drawColorBar($('colorBar'), min, max, unit);
     this.updatePointCloud();
     this.drawHistograms();
+    this.updateHandDetection();
+  }
+
+  updateHandDetection() {
+    if ($('handBody').hidden) return;
+    const detect = $('handEnable').checked;
+    if (detect) this.handDetector.load();
+    if (!this.lastMeasurement) return;
+
+    const result = this.handDetector.render($('handCanvas'), this.lastMeasurement.pixels, {
+      zMin: Number($('handZMin').value),
+      zMax: Number($('handZMax').value),
+      detect,
+    });
+    let info = detect ? `${result.hands} hand(s)${result.pinch ? ' | pinch' : ''}` : 'detection off';
+    if (!result.usesSignal) info += ' | enable Signal for best results';
+    $('handInfo').textContent = info;
+
+    const formatXYZ = (p) => (p ? `(${p.x}, ${p.y}, ${p.z})` : '(-)');
+    $('handFingertips').textContent = result.fingertips
+      .map((tips) => `Thumb ${formatXYZ(tips.thumb)} | Index ${formatXYZ(tips.index)} mm`)
+      .join('\n');
   }
 
   updatePointCloud() {

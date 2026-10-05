@@ -9,7 +9,7 @@
 <body>
 <header>
   <h1>ams OSRAM | <a class="board-link" href="https://ams-osram.com/products/boards-kits-accessories/kits/ams-tmf8829-evm-eb-shield-evaluation-kit" target="_blank" rel="noopener noreferrer">TMF8829 Shield Board</a> Web App Viewer</h1>
-  <span>V1.2</span>
+  <span>V1.3</span>
   <span id="status">Disconnected</span>
 </header>
 
@@ -181,6 +181,29 @@
         </div>
         <canvas id="pointCloud" width="640" height="420"></canvas>
         <canvas id="pointCloudColorBar" width="640" height="30"></canvas>
+      </div>
+    </div>
+
+    <div class="panel panel-collapsible" id="panelHand">
+      <div class="view-header">
+        <h2>Hand &amp; pinch detection</h2>
+        <div class="view-header-actions">
+          <p id="handInfo" class="info-line"></p>
+          <button id="toggleHand" class="section-toggle" type="button" aria-controls="handBody" aria-expanded="false">Show</button>
+        </div>
+      </div>
+      <div id="handBody" class="panel-body" hidden>
+        <div class="view-controls">
+          <label><input id="handEnable" type="checkbox" checked> Hand detection</label>
+          <label for="handZMin">Min (mm)</label>
+          <input id="handZMin" type="number" value="50" min="0" max="10000" step="10">
+          <label for="handZMax">Max (mm)</label>
+          <input id="handZMax" type="number" value="550" min="0" max="10000" step="10">
+        </div>
+        <canvas id="handCanvas" width="800" height="600" title="Click to toggle hand detection"></canvas>
+        <p id="handFingertips" class="info-line"></p>
+        <p class="hint">Use the 48x32 configuration with <strong>Signal</strong> enabled and a hand within the range above.
+          Uses MediaPipe and the hand landmarker model (Google, Apache 2.0, see <code>mediapipe/LICENSE</code>), loaded from <code>mediapipe/tmf8829_hand_assets.js</code> next to this page.</p>
       </div>
     </div>
 
