@@ -44,9 +44,9 @@
             <div class="flex items-center gap-3">
                 <img id="logo" src="" alt="ams OSRAM" class="h-10 object-contain" />
                 <div class="h-6 w-px bg-gray-300 hidden sm:block"></div>
-                <h1 class="text-lg font-bold tracking-tight text-gray-800">TMF8806 Power Calculator</h1>
+                <h1 class="text-lg font-bold tracking-tight text-gray-800">TMF8806 Power Calculator <span class="text-sm font-semibold text-gray-400">v1.1</span></h1>
             </div>
-            <div class="text-xs bg-amber-500/10 text-[#fd5000] font-bold py-1 px-3 rounded-full uppercase tracking-wider">
+            <div id="modeBadge" class="text-xs bg-amber-500/10 text-[#fd5000] font-bold py-1 px-3 rounded-full uppercase tracking-wider">
                 Ultra Low Power Operation
             </div>
         </div>
@@ -69,6 +69,7 @@
                         The average VDD current is calculated per measurement cycle. Power of the host is excluded.
                         <br />
                         This does not result in fastest measurement rate but reduces average power consumption.
+                        For fastest operation disable ultra low power mode.
                     </p>
 
                     <div class="flex flex-col gap-2 mb-5 text-xs">
@@ -115,9 +116,18 @@
                         </div>
                     </div>
 
-                    <!-- Power-down current option -->
+                    <!-- Ultra low power mode option -->
                     <label class="flex items-start gap-3 mb-5 cursor-pointer select-none">
-                        <input type="checkbox" id="includePowerDown" class="mt-0.5 w-4 h-4 accent-[#fd5000]" />
+                        <input type="checkbox" id="useUlp" class="mt-0.5 w-4 h-4 flex-shrink-0 accent-[#fd5000]" />
+                        <span class="text-xs text-gray-600 leading-relaxed">
+                            <span class="font-bold text-gray-800">Use ultra low power mode</span><br />
+                            Device is switched off (EN=0) between measurements. Unchecked = device stays in wait (5 MHz OSC) between measurements, no start and config phases.
+                        </span>
+                    </label>
+
+                    <!-- Power-down current option -->
+                    <label id="includePowerDownLabel" class="flex items-start gap-3 mb-5 cursor-pointer select-none">
+                        <input type="checkbox" id="includePowerDown" class="mt-0.5 w-4 h-4 flex-shrink-0 accent-[#fd5000]" />
                         <span class="text-xs text-gray-600 leading-relaxed">
                             <span class="font-bold text-gray-800">Include power-down current while off</span><br />
                             Adds I<sub>VDD</sub> power-down (EN=0) for the off time. Unchecked = device is treated as fully off (0 µA).
@@ -181,8 +191,8 @@
                                 <span class="text-sm font-extrabold text-orange-600"><span id="avg_short">-</span></span>
                             </div>
                             <div class="flex justify-between items-center bg-gray-50/70 p-3 rounded-xl border border-gray-100">
-                                <span class="text-xs font-semibold text-gray-600">Charge per Measurement</span>
-                                <span class="text-sm font-bold text-gray-900"><span id="charge_short">-</span> µC</span>
+                                <span class="text-xs font-semibold text-gray-600">Cycle Time / Rate</span>
+                                <span class="text-sm font-bold text-gray-900"><span id="cycle_short">-</span> ms / <span id="rate_short">-</span> Hz</span>
                             </div>
                             <div class="flex justify-between items-center bg-gray-50/70 p-3 rounded-xl border border-gray-100">
                                 <span class="text-xs font-semibold text-gray-600">Active Time / Duty Cycle</span>
@@ -199,8 +209,8 @@
                                 <span class="text-sm font-extrabold text-orange-600"><span id="avg_full">-</span></span>
                             </div>
                             <div class="flex justify-between items-center bg-gray-50/70 p-3 rounded-xl border border-gray-100">
-                                <span class="text-xs font-semibold text-gray-600">Charge per Measurement</span>
-                                <span class="text-sm font-bold text-gray-900"><span id="charge_full">-</span> µC</span>
+                                <span class="text-xs font-semibold text-gray-600">Cycle Time / Rate</span>
+                                <span class="text-sm font-bold text-gray-900"><span id="cycle_full">-</span> ms / <span id="rate_full">-</span> Hz</span>
                             </div>
                             <div class="flex justify-between items-center bg-gray-50/70 p-3 rounded-xl border border-gray-100">
                                 <span class="text-xs font-semibold text-gray-600">Active Time / Duty Cycle</span>
@@ -297,7 +307,7 @@
             <div class="flex gap-4">
                 <a href="#" class="hover:text-amber-500 font-medium">Full License (MIT)</a>
                 <span class="text-gray-300">|</span>
-                <span class="font-medium text-gray-700">TMF8806 Power Calculator v1.0</span>
+                <span class="font-medium text-gray-700">TMF8806 Power Calculator v1.1</span>
             </div>
         </div>
     </footer>
@@ -313,6 +323,7 @@
         const DEFAULTS = {
             period: 1,
             iterations: 10000,
+            useUlp: true,
             includePowerDown: false,
             iPowerDown: 0.26,      // µA, EN low
             iWait5MHz: 140,        // µA, CPU off, OSC on 5 MHz
@@ -350,6 +361,8 @@
         const ITER_MIN = 10000;
         const ITER_MAX = 4000000;
         const pdCheckbox = document.getElementById('includePowerDown');
+        const pdLabel = document.getElementById('includePowerDownLabel');
+        const ulpCheckbox = document.getElementById('useUlp');
         const warningBox = document.getElementById('validationWarning');
         const warningMsg = document.getElementById('warningMessage');
         const chartCanvas = document.getElementById('chartCanvas');
@@ -386,18 +399,32 @@
             p.iterations = parseFloat(iterInput.value);
             p.period = parseFloat(periodInput.value);
             p.includePowerDown = pdCheckbox.checked;
+            p.useUlp = ulpCheckbox.checked;
             return p;
+        }
+
+        // Current (mA) between measurements: power-down in ULP mode, otherwise wait at 5 MHz OSC
+        function idleCurrent(p) {
+            if (!p.useUlp) return p.iWait5MHz / 1000;
+            return p.includePowerDown ? p.iPowerDown / 1000 : 0;
+        }
+
+        function captureTimeMs(p) {
+            return p.iterations / (p.fCapture * 1e6) * 1000;
         }
 
         // Phases of one measurement cycle; current in mA, time in ms
         function buildPhases(p) {
             const i5 = p.iWait5MHz / 1000;
-            return [
+            const startPhases = p.useUlp ? [
                 { name: 'Start (analog + digital)', t: p.tStartHw,   i: i5,            short: true,  full: true },
                 { name: 'Start SW 5 MHz',           t: p.tStartSw5,  i: i5,            short: true,  full: true },
                 { name: 'Start SW 80 MHz',          t: p.tStartSw80, i: p.iProcessing, short: true,  full: true },
-                { name: 'Config SW (1 MHz I²C)',    t: p.tConfig,    i: p.iProcessing, short: true,  full: true },
-                { name: `Capture (${p.iterations.toLocaleString()} it.)`, t: p.iterations / (p.fCapture * 1e6) * 1000, i: p.iRanging, short: true, full: true },
+                { name: 'Config SW (1 MHz I²C)',    t: p.tConfig,    i: p.iProcessing, short: true,  full: true }
+            ] : [];
+            return [
+                ...startPhases,
+                { name: `Capture (${p.iterations} it.)`, t: captureTimeMs(p), i: p.iRanging, short: true, full: true },
                 { name: 'Calculate prox only',      t: p.tCalcShort, i: p.iProcessing, short: true,  full: false },
                 { name: 'Calculate prox + distance',t: p.tCalcFull,  i: p.iProcessing, short: false, full: true }
             ];
@@ -418,17 +445,22 @@
         // Average current in µA (mA·ms / ms * 1000 = µA)
         function averageCurrent(cycle, periodS, p) {
             const cycleMs = effectiveCycleMs(cycle, periodS);
-            const offQ = p.includePowerDown ? (cycleMs - cycle.t) * p.iPowerDown / 1000 : 0;
+            const offQ = (cycleMs - cycle.t) * idleCurrent(p);
             return (cycle.q + offQ) / cycleMs * 1000;
         }
 
         function fmt(v, digits = 1) {
             if (!isFinite(v)) return '-';
-            return Number(v.toFixed(digits)).toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+            return Number(v.toFixed(digits)).toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits, useGrouping: false });
+        }
+
+        function fmtMs(ms, digits = 2) {
+            return fmt(ms, ms >= 100 ? 0 : digits);
         }
 
         function fmtCurrent(uA, digits = 1) {
-            return uA > 1000 ? `${fmt(uA / 1000, digits)} mA` : `${fmt(uA, digits)} µA`;
+            if (uA > 1000) return `${fmt(uA / 1000, digits)} mA`;
+            return `${fmt(uA, uA > 10 ? 0 : digits)} µA`;
         }
 
         function showWarning(msg) {
@@ -442,7 +474,10 @@
 
         function performCalculations() {
             const p = readParams();
-            const values = Object.entries(p).filter(([k]) => k !== 'includePowerDown').map(([, v]) => v);
+            pdCheckbox.disabled = !ulpCheckbox.checked;
+            pdLabel.classList.toggle('opacity-50', !ulpCheckbox.checked);
+            document.getElementById('modeBadge').textContent = ulpCheckbox.checked ? 'Ultra Low Power Operation' : 'Low Power Operation';
+            const values = Object.entries(p).filter(([k]) => k !== 'includePowerDown' && k !== 'useUlp').map(([, v]) => v);
             if (values.some(v => isNaN(v))) {
                 showWarning('Waiting for numeric entries...');
                 return;
@@ -452,7 +487,7 @@
                 return;
             }
             if (p.iterations < ITER_MIN || p.iterations > ITER_MAX) {
-                showWarning(`Iterations must be between ${ITER_MIN.toLocaleString()} and ${ITER_MAX.toLocaleString()}.`);
+                showWarning(`Iterations must be between ${ITER_MIN} and ${ITER_MAX}.`);
                 return;
             }
 
@@ -462,7 +497,7 @@
             const minPeriodMs = Math.max(short.t, full.t);
 
             if (p.period * 1000 < minPeriodMs) {
-                showWarning(`Period too short: one full range measurement takes ${fmt(minPeriodMs, 2)} ms. Idle time is set to 0 and the cycle time is extended to the active time.`);
+                showWarning(`Period too short: one full range measurement takes ${fmtMs(minPeriodMs, 2)} ms. Idle time is set to 0 and the cycle time is extended to the active time.`);
             } else {
                 clearWarning();
             }
@@ -470,14 +505,18 @@
             const avgShort = averageCurrent(short, p.period, p);
             const avgFull = averageCurrent(full, p.period, p);
 
-            document.getElementById('rate_value').textContent = fmt(1 / p.period, 3);
-            document.getElementById('capture_time_label').textContent = fmt(phases[4].t, 3);
+            document.getElementById('rate_value').textContent = fmt(1 / p.period, 2);
+            document.getElementById('capture_time_label').textContent = fmtMs(captureTimeMs(p), 3);
             document.getElementById('avg_short').textContent = fmtCurrent(avgShort);
             document.getElementById('avg_full').textContent = fmtCurrent(avgFull);
-            document.getElementById('charge_short').textContent = fmt(short.q, 1);
-            document.getElementById('charge_full').textContent = fmt(full.q, 1);
-            document.getElementById('active_short').textContent = fmt(short.t, 2);
-            document.getElementById('active_full').textContent = fmt(full.t, 2);
+            const cycleShortMs = effectiveCycleMs(short, p.period);
+            const cycleFullMs = effectiveCycleMs(full, p.period);
+            document.getElementById('cycle_short').textContent = fmtMs(cycleShortMs, 2);
+            document.getElementById('cycle_full').textContent = fmtMs(cycleFullMs, 2);
+            document.getElementById('rate_short').textContent = fmt(1000 / cycleShortMs, 2);
+            document.getElementById('rate_full').textContent = fmt(1000 / cycleFullMs, 2);
+            document.getElementById('active_short').textContent = fmtMs(short.t, 2);
+            document.getElementById('active_full').textContent = fmtMs(full.t, 2);
             document.getElementById('duty_short').textContent = fmt(short.t / effectiveCycleMs(short, p.period) * 100, 2);
             document.getElementById('duty_full').textContent = fmt(full.t / effectiveCycleMs(full, p.period) * 100, 2);
 
@@ -500,7 +539,7 @@
                 const tr = document.createElement('tr');
                 tr.className = 'border-t border-gray-100';
                 addCell(tr, ph.name, 'py-1.5 text-left font-semibold text-gray-600');
-                addCell(tr, fmt(ph.t, 3));
+                addCell(tr, fmtMs(ph.t, 3));
                 addCell(tr, fmt(ph.i, 3));
                 addCell(tr, ph.short ? fmt(ph.t * ph.i, 3) : '-');
                 addCell(tr, ph.full ? fmt(ph.t * ph.i, 3) : '-');
@@ -511,19 +550,19 @@
             const cycleFull = effectiveCycleMs(full, p.period);
             const offShort = cycleShort - short.t;
             const offFull = cycleFull - full.t;
-            const iOff = p.includePowerDown ? p.iPowerDown / 1000 : 0;
+            const iOff = idleCurrent(p);
             const tr = document.createElement('tr');
             tr.className = 'border-t border-gray-100';
-            addCell(tr, 'Off (EN=0)', 'py-1.5 text-left font-semibold text-gray-600');
-            addCell(tr, `${fmt(offShort, 2)} / ${fmt(offFull, 2)}`);
+            addCell(tr, p.useUlp ? 'Off (EN=0)' : 'Wait (5 MHz OSC)', 'py-1.5 text-left font-semibold text-gray-600');
+            addCell(tr, `${fmtMs(offShort, 2)} / ${fmtMs(offFull, 2)}`);
             addCell(tr, fmt(iOff, 5));
             addCell(tr, fmt(offShort * iOff, 3));
             addCell(tr, fmt(offFull * iOff, 3));
             body.appendChild(tr);
 
             document.getElementById('sum_time').textContent = cycleShort === cycleFull
-                ? fmt(cycleShort, 2)
-                : `${fmt(cycleShort, 2)} / ${fmt(cycleFull, 2)}`;
+                ? fmtMs(cycleShort, 2)
+                : `${fmtMs(cycleShort, 2)} / ${fmtMs(cycleFull, 2)}`;
             document.getElementById('sum_short').textContent = fmt(short.q + offShort * iOff, 3);
             document.getElementById('sum_full').textContent = fmt(full.q + offFull * iOff, 3);
         }
@@ -743,6 +782,7 @@
             periodInput.value = DEFAULTS.period;
             iterInput.value = DEFAULTS.iterations;
             pdCheckbox.checked = DEFAULTS.includePowerDown;
+            ulpCheckbox.checked = DEFAULTS.useUlp;
             [...CURRENT_PARAMS, ...TIMING_PARAMS].forEach(def => {
                 document.getElementById('p_' + def.key).value = DEFAULTS[def.key];
             });
@@ -763,6 +803,7 @@
             performCalculations();
         });
         pdCheckbox.addEventListener('change', performCalculations);
+        ulpCheckbox.addEventListener('change', performCalculations);
         document.getElementById('logX').addEventListener('change', performCalculations);
         document.getElementById('logY').addEventListener('change', performCalculations);
         document.getElementById('resetBtn').addEventListener('click', () => {
