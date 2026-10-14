@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TMF8829 Log Viewer & CSV Exporter 2v2</title>
+    <title>TMF8829 Log Viewer & CSV Exporter 2v3</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Pako library for client-side gzip decompression -->
@@ -39,7 +39,7 @@
         <div class="flex items-center space-x-3">
             <i class="fa-solid fa-microchip text-emerald-400 text-2xl"></i>
             <div>
-                <h1 class="text-lg font-bold tracking-wide">TMF8829 Log Viewer & Converter 2v2</h1>
+                <h1 class="text-lg font-bold tracking-wide">TMF8829 Log Viewer & Converter 2v3</h1>
                 <p class="text-xs text-slate-400">Interactive ToF Sensor Data Analysis & CSV Exporter</p>
             </div>
         </div>
@@ -510,7 +510,7 @@
 
                 frameDetails.innerHTML = `
                     <div class="flex items-center gap-3">
-                        ${hasWarnings ? '<span class="text-rose-600 font-bold"><i class="fa-solid fa-triangle-exclamation"></i> Warnings</span>' : ''}
+                        ${hasWarnings ? `<span class="text-rose-600 font-bold"><i class="fa-solid fa-triangle-exclamation"></i> Warnings: ${decodeWarnings(frame.info.warnings)}</span>` : ''}
                         <span>Frame: <strong class="text-blue-900">${frame.info.frame_number || currentFrame}</strong></span>
                         <span>Res: <strong>${resolution}</strong></span>
                         <span>Iter: <strong>${iterations}k</strong></span>
@@ -832,6 +832,23 @@
             const modal = document.getElementById('histoModal');
             modal.classList.add('hidden');
             modal.classList.remove('flex');
+        }
+
+        // info.warnings = (frameStatus & 0xF8) >> 3
+        const WARNING_BITS = [
+            { mask: 0x01, text: 'SPAD charge pump overload' },
+            { mask: 0x02, text: 'VCDRV overload' },
+            { mask: 0x04, text: 'VCDRV burst exceeded' },
+            { mask: 0x18, text: 'Frame aborted' }
+        ];
+
+        function decodeWarnings(value) {
+            const warnings = Number(value) || 0;
+            const names = WARNING_BITS.filter(w => warnings & w.mask).map(w => w.text);
+            const known = WARNING_BITS.reduce((acc, w) => acc | w.mask, 0);
+            const unknown = warnings & ~known;
+            if (unknown) names.push(`unknown 0x${unknown.toString(16).toUpperCase()}`);
+            return names.join(', ');
         }
 
         window.onclick = function(e) {
