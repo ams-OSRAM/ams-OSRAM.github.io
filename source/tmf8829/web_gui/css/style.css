@@ -437,6 +437,14 @@ canvas {
 #pixelHistogram { margin-bottom: 10px; }
 #pointCloud { cursor: grab; touch-action: none; }
 #pointCloud.dragging { cursor: grabbing; }
+#handCanvas { cursor: pointer; }
+
+/* Room for two hands so the layout does not jump. */
+#handFingertips {
+  line-height: 1.5;
+  min-height: 3em;
+  white-space: pre-line;
+}
 
 .panel-column .panel,
 .view .panel {

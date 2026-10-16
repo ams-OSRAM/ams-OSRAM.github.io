@@ -10,6 +10,7 @@ import { FP_MODE_NAMES } from './registers.js';
 import { buildHistogramMap, buildPixelMap, parseRefSpadFrame, pixelColumns, pixelRows } from './frames.js';
 import { drawColorBar, drawHeatMap, drawHistogram, drawPointCloud, getPixelXYZ } from './render.js';
 import { HOST_VERSION, LOGGER_VERSION, WEB_GUI_VERSION, MeasurementLogger } from './logging.js';
+import { HandDetector } from './hand.js';
 
 const EVM_H5_FILTERS = [
   { usbVendorId: 0x1325, usbProductId: 0x1000 },
@@ -21,6 +22,7 @@ const DEFAULT_BAUD_RATE = 115200;
 const DEFAULT_USE_FIFO_DOWNLOAD = true;
 const DEFAULT_VERIFY_DOWNLOAD = false;
 const MEASUREMENT_POLL_TIMEOUT_MS = 800;
+const POINT_CLOUD_MAX_ZOOM = 40;
 
 // Every mode is drawn with the 48x32 aspect ratio so the view size never jumps.
 const PIXEL_MAP_ASPECT = 32 / 48;
@@ -44,6 +46,9 @@ class Application {
       onLog: (text) => this.log(text),
       onChange: () => this.updateRecordingUi(),
     });
+    this.handDetector = new HandDetector({ onLog: (text) => this.log(text) });
+    this.handSectionOpened = false;
+    this.handDefaultsPending = false;
 
     this.hexText = null;
     this.lastConfig = null;
@@ -70,7 +75,10 @@ class Application {
       yaw: -0.75,
       pitch: 0.43,
       zoom: 4,
+      panX: 0,
+      panY: 0,
       dragging: false,
+      panning: false,
       pointerX: 0,
       pointerY: 0,
       pinchDistance: 0,
@@ -147,6 +155,7 @@ class Application {
     pointCloudCanvas.addEventListener('mousemove', (event) => this.onPointCloudDragMove(event));
     pointCloudCanvas.addEventListener('mouseup', () => this.onPointCloudDragEnd());
     pointCloudCanvas.addEventListener('mouseleave', () => this.onPointCloudDragEnd());
+    pointCloudCanvas.addEventListener('contextmenu', (event) => event.preventDefault());
     pointCloudCanvas.addEventListener('wheel', (event) => this.onPointCloudWheel(event), { passive: false });
 
     // Touch: one finger rotates, two fingers pinch to zoom.
@@ -154,6 +163,14 @@ class Application {
     pointCloudCanvas.addEventListener('touchmove', (event) => this.onPointCloudTouchMove(event), { passive: false });
     pointCloudCanvas.addEventListener('touchend', (event) => this.onPointCloudTouchEnd(event));
     pointCloudCanvas.addEventListener('touchcancel', (event) => this.onPointCloudTouchEnd(event));
+
+    $('handEnable').addEventListener('change', () => this.updateHandDetection());
+    $('handZMin').addEventListener('input', () => this.updateHandDetection());
+    $('handZMax').addEventListener('input', () => this.updateHandDetection());
+    $('handCanvas').addEventListener('click', () => {
+      $('handEnable').checked = !$('handEnable').checked;
+      this.updateHandDetection();
+    });
 
     const maxDistanceSlider = $('pointCloudMaxDistance');
     const maxDistanceValue = $('pointCloudMaxDistanceValue');
@@ -204,6 +221,12 @@ class Application {
         toggles: [$('togglePointCloud')],
         open: true,
       },
+      hand: {
+        panels: [$('panelHand')],
+        bodies: [$('handBody')],
+        toggles: [$('toggleHand')],
+        open: false,
+      },
       pixelAndHistogram: {
         panels: [$('panelPixelMap'), $('panelHistogram')],
         bodies: [$('pixelMapBody'), $('histogramBody')],
@@ -252,6 +275,36 @@ class Application {
       toggle.textContent = open ? 'Hide' : 'Show';
     }
     this.updateHistogramNotice();
+    if (section === this.viewSections.hand) {
+      if (open && !this.handSectionOpened) {
+        this.handSectionOpened = true;
+        this.handDefaultsPending = true;
+        this.guard(() => this.applyHandDetectionDefaults());
+      }
+      this.updateHandDetection();
+    }
+  }
+
+  async applyHandDetectionDefaults() {
+    if (!this.handDefaultsPending || !this.initialized) return;
+    this.handDefaultsPending = false;
+
+    const wasRunning = this.running;
+    if (wasRunning) {
+      this.stopRequested = true;
+      if (this.measurementRunPromise) await this.measurementRunPromise;
+    }
+
+    $('preConfig').value = '71:0';
+    await this.applyPreConfig();
+    // applyPreConfig reads back device defaults, so set these afterwards.
+    $('iterations').value = '1800';
+    $('iterationsSlider').value = '1800';
+    $('signalStrength').checked = true;
+    await this.applyConfig();
+    this.log('Hand detection: 48x32, 1800k iterations, signal enabled');
+
+    if (wasRunning) this.guard(() => this.startMeasurement());
   }
 
   updateHistogramNotice() {
@@ -682,6 +735,7 @@ class Application {
     this.setState({ initialized: true });
     this.status('Sensor ready');
     this.log('Application firmware started');
+    await this.applyHandDetectionDefaults();
   }
 
   syncFormFromConfig(config) {
@@ -914,6 +968,28 @@ class Application {
     drawColorBar($('colorBar'), min, max, unit);
     this.updatePointCloud();
     this.drawHistograms();
+    this.updateHandDetection();
+  }
+
+  updateHandDetection() {
+    if ($('handBody').hidden) return;
+    const detect = $('handEnable').checked;
+    if (detect) this.handDetector.load();
+    if (!this.lastMeasurement) return;
+
+    const result = this.handDetector.render($('handCanvas'), this.lastMeasurement.pixels, {
+      zMin: Number($('handZMin').value),
+      zMax: Number($('handZMax').value),
+      detect,
+    });
+    let info = detect ? `${result.hands} hand(s)${result.pinch ? ' | pinch' : ''}` : 'detection off';
+    if (!result.usesSignal) info += ' | enable Signal for best results';
+    $('handInfo').textContent = info;
+
+    const formatXYZ = (p) => (p ? `(${p.x}, ${p.y}, ${p.z})` : '(-)');
+    $('handFingertips').textContent = result.fingertips
+      .map((tips) => `Thumb ${formatXYZ(tips.thumb)} | Index ${formatXYZ(tips.index)} mm`)
+      .join('\n');
   }
 
   updatePointCloud() {
@@ -975,6 +1051,8 @@ class Application {
       yaw: this.pointCloudView.yaw,
       pitch: this.pointCloudView.pitch,
       zoom: this.pointCloudView.zoom,
+      panX: this.pointCloudView.panX,
+      panY: this.pointCloudView.panY,
       selectedIndex: this.selectedPointIndex,
       referencePoints: this.pointCloudScaleReferencePoints,
       pointCountForSizing: resolutionPointCount,
@@ -986,11 +1064,13 @@ class Application {
     const maxDistance = Number($('pointCloudMaxDistance').value);
     $('pointCloudInfo').textContent = selected
       ? `xyz (${selected.x}, ${selected.y}, ${selected.z}) mm | ${this.pointCloudPoints.length} points <= ${maxDistance} mm`
-      : `${this.pointCloudPoints.length} points <= ${maxDistance} mm | drag to rotate, wheel to zoom`;
+      : `${this.pointCloudPoints.length} points <= ${maxDistance} mm | drag to rotate, right-drag to pan, wheel to zoom`;
   }
 
   onPointCloudDragStart(event) {
+    if (event.button !== 0 && event.button !== 2) return;
     this.pointCloudView.dragging = true;
+    this.pointCloudView.panning = event.button === 2;
     this.pointCloudView.pointerX = event.clientX;
     this.pointCloudView.pointerY = event.clientY;
     $('pointCloud').classList.add('dragging');
@@ -1003,21 +1083,30 @@ class Application {
     this.pointCloudView.pointerX = event.clientX;
     this.pointCloudView.pointerY = event.clientY;
 
-    this.pointCloudView.yaw += deltaX * 0.01;
-    this.pointCloudView.pitch = Math.max(-1.45, Math.min(1.45, this.pointCloudView.pitch + deltaY * 0.01));
+    if (this.pointCloudView.panning) {
+      // Convert CSS pixels to canvas pixels so the cloud follows the cursor.
+      const canvas = $('pointCloud');
+      const rect = canvas.getBoundingClientRect();
+      this.pointCloudView.panX += deltaX * (rect.width ? canvas.width / rect.width : 1);
+      this.pointCloudView.panY += deltaY * (rect.height ? canvas.height / rect.height : 1);
+    } else {
+      this.pointCloudView.yaw += deltaX * 0.01;
+      this.pointCloudView.pitch = Math.max(-1.45, Math.min(1.45, this.pointCloudView.pitch + deltaY * 0.01));
+    }
     this.drawPointCloud();
   }
 
   onPointCloudDragEnd() {
     if (!this.pointCloudView.dragging) return;
     this.pointCloudView.dragging = false;
+    this.pointCloudView.panning = false;
     $('pointCloud').classList.remove('dragging');
   }
 
   onPointCloudWheel(event) {
     event.preventDefault();
     const factor = event.deltaY < 0 ? 1.08 : 0.92;
-    this.pointCloudView.zoom = Math.max(0.12, Math.min(12, this.pointCloudView.zoom * factor));
+    this.pointCloudView.zoom = Math.max(0.12, Math.min(POINT_CLOUD_MAX_ZOOM, this.pointCloudView.zoom * factor));
     this.drawPointCloud();
   }
 
@@ -1051,7 +1140,7 @@ class Application {
       const distance = this._touchDistance(event.touches);
       const previous = this.pointCloudView.pinchDistance;
       if (previous > 0 && distance > 0) {
-        this.pointCloudView.zoom = Math.max(0.12, Math.min(12, this.pointCloudView.zoom * (distance / previous)));
+        this.pointCloudView.zoom = Math.max(0.12, Math.min(POINT_CLOUD_MAX_ZOOM, this.pointCloudView.zoom * (distance / previous)));
         this.drawPointCloud();
       }
       this.pointCloudView.pinchDistance = distance;

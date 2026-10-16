@@ -428,6 +428,12 @@ export class Tmf8829 {
     const refFrames = [];
     let collected = 0;
     const deadline = performance.now() + timeoutMs;
+    const twoResultFrames = this.cfgFpMode > FpMode.M16x16;
+    const dropResults = () => {
+      collected -= resultFrames.length + refFrames.length;
+      resultFrames.length = 0;
+      refFrames.length = 0;
+    };
 
     while (collected < expected) {
       if (shouldStop?.()) return null;
@@ -437,11 +443,21 @@ export class Tmf8829 {
         await sleep(1);
         continue;
       }
+      const header = parseHeader(item.frame);
+      if (twoResultFrames && (header.id & Frame.FID_MASK) === Frame.FID_RESULTS) {
+        // A lost sub-frame would pair halves of different measurements (or swap rows), so resync on sub-frame 0.
+        const sub = (header.layout & ResultFormat.SUB_RESULT.mask) ? 1 : 0;
+        if (sub === 0 && resultFrames.length) dropResults();
+        if (sub === 1 && (resultFrames.length !== 1 || parseHeader(resultFrames[0]).fNumber !== header.fNumber - 1)) {
+          dropResults();
+          continue;
+        }
+      }
       if (item.refFrame) {
         refFrames.push(item.refFrame);
         collected++;
       }
-      const fid = parseHeader(item.frame).id & Frame.FID_MASK;
+      const fid = header.id & Frame.FID_MASK;
       if (fid === Frame.FID_RESULTS) resultFrames.push(item.frame);
       else if (fid === Frame.FID_HISTOGRAMS) histogramFrames.push(item.frame);
       collected++;

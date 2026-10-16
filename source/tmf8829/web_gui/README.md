@@ -27,6 +27,7 @@ has been ported to JavaScript:
 | Frame parsing | [js/frames.js](js/frames.js) | `tmf8829_application_common.py` |
 | Measurement logging | [js/logging.js](js/logging.js) | `tmf8829_zeromq_client` |
 | Visualisation | [js/render.js](js/render.js), [js/app.js](js/app.js) | `utilities/tmf8829_visualisation.py` |
+| Hand & pinch detection | [js/hand.js](js/hand.js) | [`tmf8829_hand_detection.py`](https://github.com/ams-OSRAM/tmf8829_app_hand_pinch_detection/blob/main/tmf8829_hand_detection.py) |
 
 ## Requirements
 
@@ -48,12 +49,21 @@ python build_and_run.py
 ```
 
 This writes `html/tmf8829/tmf8829_web_gui.html` at the repository root, which
-inlines the stylesheet, the whole JavaScript stack and the sensor firmware image
-— it has no external references at all. The build then opens the page
+inlines the stylesheet, the whole JavaScript stack and the sensor firmware image.
+The build then opens the page
 automatically in your default browser. You can also double-click it, or open it
 in Chrome from `file://`.
 
-Re-run the build after changing anything under `web_gui/js` or `web_gui/css`.
+The build also writes `html/tmf8829/mediapipe/tmf8829_hand_assets.js` (about
+23 MB) together with its `LICENSE`. It packs the MediaPipe library, its WASM
+runtime and the hand landmarker model from [mediapipe/](mediapipe/) into one
+classic script, which Chrome and Edge also load from `file://`. It is only
+loaded when the *Hand & pinch detection* view is opened and must stay in the
+`mediapipe/` folder next to `tmf8829_web_gui.html`. No CDN or internet access
+is needed.
+
+Re-run the build after changing anything under `web_gui/js`, `web_gui/css` or
+`web_gui/mediapipe`.
 
 ### From a local server
 
@@ -167,7 +177,34 @@ The current viewer includes:
 * **Pixel inspection** on click, including XYZ, signal, noise, xtalk and peaks
 * **Histograms** with a notice when histogram output is disabled in the sensor
   configuration
-* **Collapsible view sections** for point cloud, pixel map, histograms and log
+* **Hand & pinch detection** on the signal image (see below)
+* **Collapsible view sections** for point cloud, hand & pinch detection, pixel
+  map, histograms and log
+
+## Hand & pinch detection
+
+Port of the [hand and pinch detection app](https://github.com/ams-OSRAM/tmf8829_app_hand_pinch_detection)
+to the browser; no camera is needed, only the TMF8829.
+
+* Opening the view for the first time switches to `48x32`, 1800 k iterations
+  and enables *Signal*.
+* Pixels outside *Min* / *Max* (default 50 mm to 550 mm, flat target corrected
+  z) are masked. The signal image is de-noised with a bilateral filter, stretched
+  to 0..255 and scaled bicubically to 800x600, then fed to the MediaPipe hand
+  landmarker (up to 2 hands).
+* The overlay shows the landmarks, fingertip labels, the average distance and
+  *PINCH DETECTED* when thumb and index tip are closer than 50 px; a line joins
+  them below 100 px.
+* Next to *Min* / *Max* the x/y/z (mm) of thumb and index tip are shown, taken
+  from the in-range sensor pixel under or next to each tip.
+* Click the image or use the *Hand detection* checkbox to toggle detection.
+* Without *Signal* enabled the SNR is used instead, with reduced detection
+  performance.
+
+The MediaPipe files are pinned in [mediapipe/](mediapipe/):
+`@mediapipe/tasks-vision` 0.10.14 (`vision_bundle.cjs`,
+`vision_wasm_internal.js`, `vision_wasm_internal.wasm`) and
+`hand_landmarker.task` (`float16/1`).
 
 ## Protocol notes
 
@@ -193,6 +230,15 @@ large histogram frames can be read in one SPI transaction.
 
 ## Changelog
 
+### V1.3
+
+* **Hand & pinch detection** – new view with MediaPipe hand landmarks, pinch
+  detection, average distance and thumb / index tip x/y/z
+  ([js/hand.js](js/hand.js)); MediaPipe is bundled locally and also works from
+  `file://` and offline.
+* 48x32 and 32x32: the two result sub-frames are now re-synchronized when a
+  frame is lost, which removes row tearing at high frame rates.
+
 ### V1.2
 
 * **Measurement logging** – new *Logging* panel records a selectable number of
@@ -216,3 +262,9 @@ large histogram frames can be read in one SPI transaction.
 * First public release of the TMF8829 Shield Board Web App Viewer: Web Serial /
   WebUSB connection, firmware download, configuration profiles, 3D point cloud,
   pixel map, pixel inspection and histogram views.
+
+## Credits
+
+* **[MediaPipe](https://github.com/google-ai-edge/mediapipe)** – library and hand
+  landmarker model, Copyright Google LLC, Apache License 2.0, see
+  [mediapipe/LICENSE](mediapipe/LICENSE).

@@ -10,7 +10,7 @@ import { getPixelXYZExact } from './render.js';
 export const LOGGER_VERSION = '1';
 export const HOST_VERSION = [1, 1];
 // Keep in sync with the version shown in the page header.
-export const WEB_GUI_VERSION = '1.2';
+export const WEB_GUI_VERSION = '1.3';
 
 const CONFIG_BASE = CfgReg.PERIOD_MS_LSB;
 
