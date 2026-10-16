@@ -242,6 +242,8 @@ export function drawPointCloud(canvas, points, {
   yaw = 0,
   pitch = -0.45,
   zoom = 1,
+  panX = 0,
+  panY = 0,
   selectedIndex = -1,
   referencePoints = null,
   pointCountForSizing = null,
@@ -267,8 +269,8 @@ export function drawPointCloud(canvas, points, {
     return;
   }
 
-  const centerX = width / 2;
-  const centerY = height / 2;
+  const centerX = width / 2 + panX;
+  const centerY = height / 2 + panY;
   const cosYaw = Math.cos(yaw);
   const sinYaw = Math.sin(yaw);
   const cosPitch = Math.cos(pitch);
