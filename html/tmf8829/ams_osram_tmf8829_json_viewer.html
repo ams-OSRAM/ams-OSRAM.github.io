@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TMF8829 Log Viewer & CSV Exporter 2v3</title>
+    <title>TMF8829 Log Viewer & CSV Exporter 2v4</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Pako library for client-side gzip decompression -->
@@ -31,6 +31,18 @@
         .peak-low { color: #991b1b; background-color: #fee2e2; border-color: #fca5a5; }
         .peak-none { color: #475569; background-color: #f1f5f9; border-color: #e2e8f0; }
     </style>
+    <!-- Cloudflare Web Analytics: injected after page load so an unreachable beacon never delays or breaks the page -->
+    <script>
+    window.addEventListener('load', function () {
+        if (!/^https?:$/.test(location.protocol)) return;
+        var s = document.createElement('script');
+        s.defer = true;
+        s.src = 'https://static.cloudflareinsights.com/beacon.min.js';
+        s.setAttribute('data-cf-beacon', '{"token": "4e87cc89796b48eaadac050777a5039b"}');
+        document.head.appendChild(s);
+    });
+    </script>
+    <!-- End Cloudflare Web Analytics -->
 </head>
 <body class="bg-slate-100 min-h-screen text-slate-800 font-sans flex flex-col">
 
@@ -39,7 +51,7 @@
         <div class="flex items-center space-x-3">
             <i class="fa-solid fa-microchip text-emerald-400 text-2xl"></i>
             <div>
-                <h1 class="text-lg font-bold tracking-wide">TMF8829 Log Viewer & Converter 2v3</h1>
+                <h1 class="text-lg font-bold tracking-wide">TMF8829 Log Viewer & Converter 2v4</h1>
                 <p class="text-xs text-slate-400">Interactive ToF Sensor Data Analysis & CSV Exporter</p>
             </div>
         </div>
