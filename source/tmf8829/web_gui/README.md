@@ -230,6 +230,12 @@ large histogram frames can be read in one SPI transaction.
 
 ## Changelog
 
+### V1.4
+
+* Added Cloudflare Web Analytics. The beacon is injected after page load, only
+  on `http(s)` pages (not `file://`), so a blocked or unreachable analytics
+  server never delays the app or triggers the load-error banner.
+
 ### V1.3
 
 * **Hand & pinch detection** – new view with MediaPipe hand landmarks, pinch

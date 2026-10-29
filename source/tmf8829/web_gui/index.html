@@ -5,11 +5,24 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TMF8829 Shield Board Web App Viewer</title>
 <link rel="stylesheet" href="css/style.css">
+<!-- Cloudflare Web Analytics: injected after page load so an unreachable beacon never delays or breaks the app -->
+<script>
+window.addEventListener('load', function () {
+  if (!/^https?:$/.test(location.protocol)) return;
+  var s = document.createElement('script');
+  s.defer = true;
+  s.src = 'https://static.cloudflareinsights.com/beacon.min.js';
+  s.setAttribute('data-cf-beacon', '{"token": "4e87cc89796b48eaadac050777a5039b"}');
+  s.setAttribute('data-optional', '');
+  document.head.appendChild(s);
+});
+</script>
+<!-- End Cloudflare Web Analytics -->
 </head>
 <body>
 <header>
   <h1>ams OSRAM | <a class="board-link" href="https://ams-osram.com/products/boards-kits-accessories/kits/ams-tmf8829-evm-eb-shield-evaluation-kit" target="_blank" rel="noopener noreferrer">TMF8829 Shield Board</a> Web App Viewer</h1>
-  <span>V1.3</span>
+  <span>V1.4</span>
   <span id="status">Disconnected</span>
 </header>
 
@@ -25,7 +38,7 @@
     banner.hidden = false;
   }
   window.addEventListener('error', function (event) {
-    if (event.target && event.target.tagName === 'SCRIPT') {
+    if (event.target && event.target.tagName === 'SCRIPT' && !event.target.hasAttribute('data-optional')) {
       warn('<strong>Failed to load ' + event.target.src + '.</strong> Serve the folder over HTTP, or use the ' +
            'self-contained <code>tmf8829_web_app_viewer.html</code> build instead.');
     }
