@@ -66,6 +66,13 @@ header h1 {
   color: #1f2937;
 }
 
+header h1 .brand-logo {
+  height: 32px;
+  width: auto;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
 header h1 .board-link {
   color: inherit;
   text-decoration: none;
@@ -499,8 +506,8 @@ window.addEventListener('load', function () {
 </head>
 <body>
 <header>
-  <h1>ams OSRAM | <a class="board-link" href="https://ams-osram.com/products/boards-kits-accessories/kits/ams-tmf8829-evm-eb-shield-evaluation-kit" target="_blank" rel="noopener noreferrer">TMF8829 Shield Board</a> Web App Viewer</h1>
-  <span>V1.4</span>
+  <h1><img class="brand-logo" src="../ams_osram_logo.png" alt="ams OSRAM"> | <a class="board-link" href="https://ams-osram.com/products/boards-kits-accessories/kits/ams-tmf8829-evm-eb-shield-evaluation-kit" target="_blank" rel="noopener noreferrer">TMF8829 Shield Board</a> Web App Viewer</h1>
+  <span>V1.5</span>
   <span id="status">Disconnected</span>
 </header>
 
@@ -3477,7 +3484,7 @@ class HandDetector {
 const LOGGER_VERSION = '1';
 const HOST_VERSION = [1, 1];
 // Keep in sync with the version shown in the page header.
-const WEB_GUI_VERSION = '1.4';
+const WEB_GUI_VERSION = '1.5';
 
 const CONFIG_BASE = CfgReg.PERIOD_MS_LSB;
 

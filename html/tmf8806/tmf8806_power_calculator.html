@@ -54,9 +54,9 @@
     <header class="bg-white border-b border-gray-200 py-4 px-6 shadow-sm">
         <div class="max-w-screen-2xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
             <div class="flex items-center gap-3">
-                <img id="logo" src="" alt="ams OSRAM" class="h-10 object-contain" />
+                <img id="logo" src="../ams_osram_logo.png" alt="ams OSRAM" class="h-10 object-contain" />
                 <div class="h-6 w-px bg-gray-300 hidden sm:block"></div>
-                <h1 class="text-lg font-bold tracking-tight text-gray-800">TMF8806 Power Calculator <span class="text-sm font-semibold text-gray-400">v1.2</span></h1>
+                <h1 class="text-lg font-bold tracking-tight text-gray-800">TMF8806 Power Calculator <span class="text-sm font-semibold text-gray-400">v1.3</span></h1>
             </div>
             <div id="modeBadge" class="text-xs bg-amber-500/10 text-[#fd5000] font-bold py-1 px-3 rounded-full uppercase tracking-wider">
                 Ultra Low Power Operation
@@ -319,14 +319,12 @@
             <div class="flex gap-4">
                 <a href="#" class="hover:text-amber-500 font-medium">Full License (MIT)</a>
                 <span class="text-gray-300">|</span>
-                <span class="font-medium text-gray-700">TMF8806 Power Calculator v1.2</span>
+                <span class="font-medium text-gray-700">TMF8806 Power Calculator v1.3</span>
             </div>
         </div>
     </footer>
 
     <script>
-        const logoBase64 = "PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjUwIiB2aWV3Qm94PSIwIDAgMjAwIDUwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjx0ZXh0IHg9IjUiIHk9IjM1IiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjQiIGZpbGw9IiMxYTFhMWEiIGZvbnQtd2VpZ2h0PSJib2xkIj5hbXMgT1NSQU08L3RleHQ+PC9zdmc+";
-
         const COLOR_SHORT = '#1f77d0';
         const COLOR_FULL = '#fbbf24';
         const REF_PERIODS = [0.25, 0.5, 1, 2, 5, 10];
@@ -828,7 +826,6 @@
         buildParamInputs('timingParams', TIMING_PARAMS);
 
         window.addEventListener('load', () => {
-            document.getElementById('logo').src = "data:image/svg+xml;base64," + logoBase64;
             applyDefaults();
             performCalculations();
             lucide.createIcons();

@@ -230,6 +230,10 @@ large histogram frames can be read in one SPI transaction.
 
 ## Changelog
 
+### V1.5
+
+* Replaced the text wordmark with the shared ams OSRAM logo.
+
 ### V1.4
 
 * Added Cloudflare Web Analytics. The beacon is injected after page load, only

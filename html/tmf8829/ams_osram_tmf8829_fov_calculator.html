@@ -37,8 +37,7 @@
     <header class="bg-white border-b border-gray-200 py-4 px-6 shadow-sm">
         <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
             <div class="flex items-center gap-3">
-                <!-- ams OSRAM Fixed Logo -->
-                <img id="logo" src="" alt="ams OSRAM" class="h-10 object-contain" />
+                <img id="logo" src="../ams_osram_logo.png" alt="ams OSRAM" class="h-10 object-contain" />
                 <div class="h-6 w-px bg-gray-300 hidden sm:block"></div>
                 <h1 class="text-lg font-bold tracking-tight text-gray-800">TMF8829 FoV Calculator</h1>
             </div>
@@ -239,7 +238,7 @@
             <div class="flex gap-4">
                 <a href="#" class="hover:text-amber-500 font-medium">Full License (MIT)</a>
                 <span class="text-gray-300">|</span>
-                <span class="font-medium text-gray-700">TMF8829 FoV Calculator v2.2</span>
+                <span class="font-medium text-gray-700">TMF8829 FoV Calculator v2.3</span>
             </div>
         </div>
     </footer>
@@ -264,9 +263,6 @@
         const customModal = document.getElementById('customModal');
         const customModalBody = document.getElementById('customModalBody');
         const customModalClose = document.getElementById('customModalClose');
-
-        // ams OSRAM logo string - Fixed with a functional base64 representation
-        const logoBase64 = "PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjUwIiB2aWV3Qm94PSIwIDAgMjAwIDUwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjx0ZXh0IHg9IjUiIHk9IjM1IiBmb250LWZhbWlseT0iQXJpYWwsIHNhbnMtc2VyaWYiIGZvbnQtc2l6ZT0iMjQiIGZpbGw9IiMxYTFhMWEiIGZvbnQtd2VpZ2h0PSJib2xkIj5hbXMgT1NSQU08L3RleHQ+PC9zdmc+";
 
         // Constants matching the physical dimensions of the TMF8829 sensor
         const SPAD_X_MAX = 48;
@@ -568,13 +564,7 @@
             canvasCtx.fillText("Distance Cone Projection", projXOffset, height - 5);
         }
 
-        // Initialize logo to the image node
         window.addEventListener('load', () => {
-            const logoEl = document.getElementById('logo');
-            if (logoEl) {
-                // Set to SVG data URI
-                logoEl.src = "data:image/svg+xml;base64," + logoBase64;
-            }
             // Sync UI limits
             updatePresetLimitsUI();
             // Trigger calculation immediately to avoid blank display on load
