@@ -79,3 +79,7 @@ https://github.com/ams-OSRAM/tmf8806_app_arduino_low_power
 You can run the tool with https://ams-osram.github.io/tmf8806/tmf8806_power_calculator.html
 
 [![TMF8806 Power Calculator](./media/tmf8806_power_calculator.png)](https://ams-osram.github.io/tmf8806/tmf8806_power_calculator.html)
+
+## Web Analytics (Cloudflare)
+
+We use Cloudflare Web Analytics (Cloudflare, Inc., 101 Townsend St, San Francisco, CA 94107, USA) to analyze aggregated visitor traffic without using cookies or tracking individuals. Technical data such as your IP address and browser type is briefly processed and immediately anonymized on the basis of our legitimate interest in optimizing our web tools (Art. 6(1)(f) GDPR). Cloudflare is certified under the EU-U.S. Data Privacy Framework. Details: https://www.cloudflare.com/privacypolicy/
