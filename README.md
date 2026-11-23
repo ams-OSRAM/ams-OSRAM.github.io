@@ -63,6 +63,9 @@ The TMF8829 GUI and logger create .json/json.gz file - these file can be viewed 
 to CSV format, which can be used with e.g. excel, all inside a webbrower with
 https://ams-osram.github.io/tmf8829/ams_osram_tmf8829_json_viewer.html
 
+The viewer also offers an interactive 3D view per frame: a surface or data points over the zone grid
+(distance, SNR, signal, noise, ...) and a real-world XYZ point cloud built from the peak x/y/z coordinates.
+
 [![JSON Viewer Screenshot](./media/tmf8829_json_viewer.png)](https://ams-osram.github.io/tmf8829/ams_osram_tmf8829_json_viewer.html)
 
 ## TMF8829 FoV calculation
