@@ -9,6 +9,9 @@
 - [TMF8829 FoV Calculation](#tmf8829-fov-calculation): 
   [tmf8829_fov_calculator.html](https://ams-osram.github.io/tmf8829/ams_osram_tmf8829_fov_calculator.html)
 
+- [AS7160 Touch and Numpad Web GUI](#as7160-touch-and-numpad-web-gui):
+  [as7160-web-gui.html](https://ams-osram.github.io/as7160/as7160-web-gui.html)
+
 - [TMF8806 Power Calculator](#tmf8806-power-calculator): 
   [tmf8806_power_calculator.html](https://ams-osram.github.io/tmf8806/tmf8806_power_calculator.html)
 
@@ -67,6 +70,20 @@ https://ams-osram.github.io/tmf8829/ams_osram_tmf8829_json_viewer.html
 You can run the tool with https://ams-osram.github.io/tmf8829/ams_osram_tmf8829_fov_calculator.html
 
 <a href="https://ams-osram.github.io/tmf8829/ams_osram_tmf8829_fov_calculator.html"><img width="1327" height="1011" alt="TMF8829 FoV Calculator" src="https://github.com/user-attachments/assets/ad627b1d-5e61-4d7d-9d14-7e44a0a088df" /></a>
+
+## AS7160 Touch and Numpad Web GUI
+
+A browser-only touchpad and numpad demo for the AS7160 EVM-H5 kit. It displays
+live touch position and movement and recognizes keypad presses after a dwell.
+Connect the kit via USB and open the
+[AS7160 Web GUI](https://ams-osram.github.io/as7160/as7160-web-gui.html)
+in a browser supporting Web Serial, such as Chrome or Edge.
+
+The default configuration loads and measurement starts automatically on
+connection. Keep the panel untouched during baseline calibration, then hold
+a key for 0.60 seconds to detect a press. Stop measurement before disconnecting.
+
+[![AS7160 Web GUI](./media/as7160_web_gui.gif)](https://ams-osram.github.io/as7160/as7160-web-gui.html)
 
 ## TMF8806 Power Calculator
 
