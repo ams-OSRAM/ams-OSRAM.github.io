@@ -88,9 +88,9 @@ select {
 
 .app-header {
     min-height: 86px;
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: center;
-    justify-content: space-between;
     gap: 24px;
     padding: 16px clamp(18px, 3vw, 42px);
     color: #fff;
@@ -157,6 +157,8 @@ select {
 }
 
 .header-meta {
+    grid-column: 3;
+    justify-self: end;
     gap: 11px;
 }
 
@@ -173,6 +175,7 @@ select {
 }
 
 .version-badge {
+    grid-column: 2;
     display: grid;
     place-items: center;
 }
@@ -847,10 +850,12 @@ select {
 @media (max-width: 760px) {
     .app-header {
         min-height: 75px;
+        gap: 8px;
         padding: 13px 16px;
     }
 
     .brand {
+        grid-column: 1 / -1;
         gap: 8px;
     }
 
@@ -874,10 +879,6 @@ select {
 
     .app-header h1 {
         font-size: 16px;
-    }
-
-    .version-badge {
-        display: none;
     }
 
     .header-status {
@@ -917,7 +918,6 @@ select {
 @media (max-width: 520px) {
     .app-header {
         align-items: flex-start;
-        flex-wrap: wrap;
         gap: 8px;
     }
 
@@ -927,10 +927,6 @@ select {
 
     .brand-logo {
         width: 140px;
-    }
-
-    .header-meta {
-        margin-left: auto;
     }
 
     .brand-mark {
@@ -1117,6 +1113,7 @@ select {
                 <h1>AS7160 Touch and Numpad</h1>
             </div>
         </div>
+        <span class="version-badge">V1.1</span>
         <div class="header-meta">
             <div class="header-status">
                 <span id="device-status-indicator" class="status-indicator disconnected"></span>
@@ -3081,6 +3078,19 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 </script>
+    <!-- Cloudflare Web Analytics: load only after the page is ready -->
+    <script>
+        window.addEventListener('load', function () {
+            if (!/^https?:$/.test(location.protocol)) return;
+
+            var s = document.createElement('script');
+            s.defer = true;
+            s.src = 'https://static.cloudflareinsights.com/beacon.min.js';
+            s.setAttribute('data-cf-beacon', '{"token": "4e87cc89796b48eaadac050777a5039b"}');
+            document.head.appendChild(s);
+        });
+    </script>
+    <!-- End Cloudflare Web Analytics -->
 <!--
 Bundled licenses
 
