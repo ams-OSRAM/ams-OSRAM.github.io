@@ -76,9 +76,10 @@ You can run the tool with https://ams-osram.github.io/tmf8829/ams_osram_tmf8829_
 
 ## AS7160 Touch and Numpad Web GUI
 
-A browser-only touchpad and numpad demo for the AS7160 EVM-H5 kit. It displays
-live touch position and movement and recognizes keypad presses after a dwell.
-Connect the kit via USB and open the
+A browser-only touchpad and numpad demo for the 
+[AS7160 EVM-H5 kit](https://ams-osram.com/de/products/boards-kits-accessories/kits/ams-as7160-sfh-7061-evm-kt-evaluation-kit).
+It displays live touch position and movement and recognizes keypad presses
+after a dwell. Connect the kit via USB and open the
 [AS7160 Web GUI](https://ams-osram.github.io/as7160/as7160-web-gui.html)
 in a browser supporting Web Serial, such as Chrome or Edge.
 
