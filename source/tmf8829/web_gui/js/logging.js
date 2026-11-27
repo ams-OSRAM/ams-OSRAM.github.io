@@ -4,15 +4,37 @@
  *****************************************************************************/
 
 import { CfgReg } from './registers.js';
-import { buildHistogramMap, buildPixelMap } from './frames.js';
+import { buildHistogramMap, buildPixelMap, parseHeader } from './frames.js';
 import { getPixelXYZExact } from './render.js';
 
 export const LOGGER_VERSION = '1';
 export const HOST_VERSION = [1, 1];
 // Keep in sync with the version shown in the page header.
-export const WEB_GUI_VERSION = '1.5';
+export const WEB_GUI_VERSION = '1.6';
 
 const CONFIG_BASE = CfgReg.PERIOD_MS_LSB;
+
+/**
+ * Splits the histogram frames of a dual mode measurement into the normal and the
+ * high accuracy pass. As in `getAllHistogramResultsDualMode` of the Python driver, every
+ * layout is sent twice, high accuracy first, and the passes are interleaved per result
+ * sub-frame (48x32: 0-5 HA, 0-5, 6-11 HA, 6-11), so the split uses the repeated layout.
+ */
+export function splitDualModeHistograms(histogramFrames) {
+  const seen = new Set();
+  const normalFrames = [];
+  const haFrames = [];
+  for (const frame of histogramFrames) {
+    const { layout } = parseHeader(frame);
+    if (seen.has(layout)) {
+      normalFrames.push(frame);
+    } else {
+      seen.add(layout);
+      haFrames.push(frame);
+    }
+  }
+  return { normalFrames, haFrames };
+}
 
 /**
  * Config page fields as documented in `tmf8829_config_page.txt`. `bytes` are
@@ -279,10 +301,9 @@ export class MeasurementLogger {
       },
     };
 
-    // In dual mode the second half of the histogram frames is the high accuracy pass.
-    const splitHa = this.dualMode && histogramFrames.length > 1 && histogramFrames.length % 2 === 0;
-    const normalFrames = splitHa ? histogramFrames.slice(0, histogramFrames.length / 2) : histogramFrames;
-    const haFrames = splitHa ? histogramFrames.slice(histogramFrames.length / 2) : [];
+    const { normalFrames, haFrames } = this.dualMode
+      ? splitDualModeHistograms(histogramFrames)
+      : { normalFrames: histogramFrames, haFrames: [] };
 
     const normal = normalFrames.length ? buildHistogramMap(normalFrames) : null;
     if (normal) {

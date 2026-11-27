@@ -39,7 +39,7 @@
       report('The test module did not run.\n\n' + (location.protocol === 'file:'
         ? 'Chrome blocks ES modules on file:// pages. Serve the repository over HTTP:\n'
           + '  python -m http.server 8000\n'
-          + 'and open http://localhost:8000/webapp/selftest.html\n'
+          + 'and open http://localhost:8000/source/tmf8829/web_gui/offline_unit_tests.html\n'
         : 'Check the browser console for the import error.\n'));
     }, 500);
   });
@@ -50,8 +50,9 @@
 import { crc16ccitt } from './js/crc16.js';
 import { CoreFw } from './js/corefw.js';
 import { parseIntelHex } from './js/intelhex.js';
+import { Tmf8829 } from './js/tmf8829.js';
 import { histogramFrameDataSize, pixelResultSize, resultFrameDataSize, framesPerMeasurement } from './js/frames.js';
-import { buildConfiguration } from './js/logging.js';
+import { buildConfiguration, splitDualModeHistograms } from './js/logging.js';
 import { FpMode } from './js/registers.js';
 
 const output = document.getElementById('output');
@@ -98,9 +99,99 @@ try {
   check('configuration blob length', configuration.blob.length, 190);
   check('configuration blob first byte', configuration.blob[0], '0x21');
 
+  // 48x32 dual mode: high accuracy and normal histograms are interleaved per result sub-frame.
+  const histoFrame = (layout, ha) => {
+    const frame = new Uint8Array(32);
+    frame[5] = 0x20 | FpMode.M48x32;
+    frame[6] = layout;
+    frame[31] = ha;
+    return frame;
+  };
+  const order = [];
+  for (const group of [[0, 1, 2, 3, 4, 5], [6, 7, 8, 9, 10, 11]]) {
+    for (const ha of [1, 0]) for (const layout of group) order.push(histoFrame(layout, ha));
+  }
+  const { normalFrames, haFrames } = splitDualModeHistograms(order);
+  const describe = (frames) => frames.map((f) => `${f[6]}${f[31] ? 'H' : ''}`).join(',');
+  check('dual mode 48x32 normal histogram layouts', describe(normalFrames), '0,1,2,3,4,5,6,7,8,9,10,11');
+  check('dual mode 48x32 HA histogram layouts', describe(haFrames), '0H,1H,2H,3H,4H,5H,6H,7H,8H,9H,10H,11H');
+
+  // readMeasurement starts in the middle of a measurement: the partial one is skipped and
+  // the histograms of the next one stay aligned with its result frames, for any position
+  // of the result frames between the histogram frames. As on the device, every FIFO frame
+  // increments the frame number; byte 31 marks the pass and byte 30 the measurement.
+  const resultFrame = (sub) => {
+    const frame = new Uint8Array(32);
+    frame[5] = 0x10 | FpMode.M48x32;
+    frame[6] = sub ? 0x40 : 0;
+    return frame;
+  };
+  const deviceStream = (measurements, skip = 0) => {
+    const frames = [];
+    measurements.forEach((templates, id) => {
+      for (const template of templates) {
+        const frame = template.slice();
+        frame[30] = id;
+        new DataView(frame.buffer).setUint32(9, frames.length + 1, true);
+        frames.push(frame);
+      }
+    });
+    return frames.slice(skip);
+  };
+  const layouts = {
+    'results after all histograms': [...order, resultFrame(0), resultFrame(1)],
+    'results after each half': [...order.slice(0, 12), resultFrame(0), ...order.slice(12), resultFrame(1)],
+  };
+  const newDevice = () => {
+    const device = Object.create(Tmf8829.prototype);
+    Object.assign(device, { cfgFpMode: FpMode.M48x32, cfgHistograms: 1, cfgDualMode: 1 });
+    return device;
+  };
+  const measurementIds = (m) => [...new Set([...m.resultFrames, ...m.histogramFrames].map((f) => f[30]))].join(',');
+  for (const [name, templates] of Object.entries(layouts)) {
+    const stream = deviceStream([templates, templates, templates], 8);
+    const device = newDevice();
+    device.readFrameIfAvailable = async () => (stream.length ? { frame: stream.shift(), refFrame: null } : null);
+    const measurement = await device.readMeasurement({ timeoutMs: 100 });
+    check(`${name}: result sub-frames`, measurement.resultFrames.map((f) => f[6]).join(','), '0,64');
+    check(`${name}: histogram frames`, describe(measurement.histogramFrames), describe(order));
+    check(`${name}: frames of one measurement`, measurementIds(measurement), '1');
+  }
+
+  // A lost histogram frame between the result sub-frames is detected by the frame number gap,
+  // even when a stale histogram keeps the count right.
+  {
+    const templates = layouts['results after each half'];
+    const stream = deviceStream([templates, templates]);
+    stream.splice(20, 1);
+    stream.unshift(stream[0]);
+    const device = newDevice();
+    device.readFrameIfAvailable = async () => (stream.length ? { frame: stream.shift(), refFrame: null } : null);
+    const measurement = await device.readMeasurement({ timeoutMs: 100 });
+    check('lost frame skips the measurement', measurementIds(measurement), '1');
+  }
+
+  // A slow transport makes every call time out mid-measurement; the frames must survive the retries.
+  {
+    const stream = deviceStream([layouts['results after each half']]);
+    const device = newDevice();
+    let reads = 0;
+    device.readFrameIfAvailable = async () => (++reads % 4 === 0 || !stream.length ? null : { frame: stream.shift(), refFrame: null });
+    let measurement = null;
+    let timeouts = 0;
+    while (!measurement && timeouts < 50) {
+      try {
+        measurement = await device.readMeasurement({ timeoutMs: 0 });
+      } catch (error) {
+        timeouts++;
+      }
+    }
+    check('measurement assembled across timeouts', measurement ? describe(measurement.histogramFrames) : `none after ${timeouts} timeouts`, describe(order));
+  }
+
   // Intel HEX parser against the shipped application image.
   try {
-    const response = await fetch('../tmf8829/hex/tmf8829_application.hex');
+    const response = await fetch('hex/tmf8829_application.hex');
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const { startAddress, data } = parseIntelHex(await response.text());
     let sum = 0;

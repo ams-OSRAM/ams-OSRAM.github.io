@@ -507,7 +507,7 @@ window.addEventListener('load', function () {
 <body>
 <header>
   <h1><img class="brand-logo" src="../ams_osram_logo.png" alt="ams OSRAM"> | <a class="board-link" href="https://ams-osram.com/products/boards-kits-accessories/kits/ams-tmf8829-evm-eb-shield-evaluation-kit" target="_blank" rel="noopener noreferrer">TMF8829 Shield Board</a> Web App Viewer</h1>
-  <span>V1.5</span>
+  <span>V1.6</span>
   <span id="status">Disconnected</span>
 </header>
 
@@ -3484,9 +3484,31 @@ class HandDetector {
 const LOGGER_VERSION = '1';
 const HOST_VERSION = [1, 1];
 // Keep in sync with the version shown in the page header.
-const WEB_GUI_VERSION = '1.5';
+const WEB_GUI_VERSION = '1.6';
 
 const CONFIG_BASE = CfgReg.PERIOD_MS_LSB;
+
+/**
+ * Splits the histogram frames of a dual mode measurement into the normal and the
+ * high accuracy pass. As in `getAllHistogramResultsDualMode` of the Python driver, every
+ * layout is sent twice, high accuracy first, and the passes are interleaved per result
+ * sub-frame (48x32: 0-5 HA, 0-5, 6-11 HA, 6-11), so the split uses the repeated layout.
+ */
+function splitDualModeHistograms(histogramFrames) {
+  const seen = new Set();
+  const normalFrames = [];
+  const haFrames = [];
+  for (const frame of histogramFrames) {
+    const { layout } = parseHeader(frame);
+    if (seen.has(layout)) {
+      normalFrames.push(frame);
+    } else {
+      seen.add(layout);
+      haFrames.push(frame);
+    }
+  }
+  return { normalFrames, haFrames };
+}
 
 /**
  * Config page fields as documented in `tmf8829_config_page.txt`. `bytes` are
@@ -3753,10 +3775,9 @@ class MeasurementLogger {
       },
     };
 
-    // In dual mode the second half of the histogram frames is the high accuracy pass.
-    const splitHa = this.dualMode && histogramFrames.length > 1 && histogramFrames.length % 2 === 0;
-    const normalFrames = splitHa ? histogramFrames.slice(0, histogramFrames.length / 2) : histogramFrames;
-    const haFrames = splitHa ? histogramFrames.slice(histogramFrames.length / 2) : [];
+    const { normalFrames, haFrames } = this.dualMode
+      ? splitDualModeHistograms(histogramFrames)
+      : { normalFrames: histogramFrames, haFrames: [] };
 
     const normal = normalFrames.length ? buildHistogramMap(normalFrames) : null;
     if (normal) {
@@ -4135,6 +4156,7 @@ class Tmf8829 {
   }
 
   async startMeasure() {
+    this.pendingMeasurement = null;
     await this.clearIntStatus(0xff);
     await this.enableInt(Frame.INT_RESULTS | Frame.INT_HISTOGRAMS);
     return this.sendCommand(AppCmd.MEASURE);
@@ -4191,22 +4213,24 @@ class Tmf8829 {
     return { frame, refFrame };
   }
 
-  /** Collects all frames that belong to one complete measurement. */
+  /**
+   * Collects all frames that belong to one complete measurement. The histogram frames
+   * received since the previous measurement are only returned together with the closing
+   * result frame when their count matches the configuration, otherwise the measurement is
+   * skipped. This keeps the histogram frames aligned with the measurement even if a frame
+   * is lost or the read starts in the middle of a measurement. Frames already received are
+   * kept across calls, so a timeout does not discard a measurement that is still arriving.
+   */
   async readMeasurement({ timeoutMs = 5000, shouldStop = null } = {}) {
-    const expected = framesPerMeasurement(this.cfgFpMode, this.cfgHistograms, this.cfgDualMode, this.cfgRefFrame);
-    const resultFrames = [];
-    const histogramFrames = [];
-    const refFrames = [];
-    let collected = 0;
-    const deadline = performance.now() + timeoutMs;
     const twoResultFrames = this.cfgFpMode > FpMode.M16x16;
-    const dropResults = () => {
-      collected -= resultFrames.length + refFrames.length;
-      resultFrames.length = 0;
-      refFrames.length = 0;
-    };
+    const expectedHistograms = this.cfgHistograms
+      ? numberOfHistogramFrames(this.cfgFpMode, this.cfgDualMode)
+      : 0;
+    this.pendingMeasurement ??= { histogramFrames: [], first: null };
+    const pending = this.pendingMeasurement;
+    let deadline = performance.now() + timeoutMs;
 
-    while (collected < expected) {
+    for (;;) {
       if (shouldStop?.()) return null;
       const item = await this.readFrameIfAvailable();
       if (!item) {
@@ -4214,26 +4238,50 @@ class Tmf8829 {
         await sleep(1);
         continue;
       }
+      deadline = performance.now() + timeoutMs;
       const header = parseHeader(item.frame);
-      if (twoResultFrames && (header.id & Frame.FID_MASK) === Frame.FID_RESULTS) {
+      const fid = header.id & Frame.FID_MASK;
+      if (fid === Frame.FID_HISTOGRAMS) {
+        pending.histogramFrames.push(item.frame);
+        continue;
+      }
+      if (fid !== Frame.FID_RESULTS) continue;
+
+      const refFrames = item.refFrame ? [item.refFrame] : [];
+      if (twoResultFrames) {
         // A lost sub-frame would pair halves of different measurements (or swap rows), so resync on sub-frame 0.
         const sub = (header.layout & ResultFormat.SUB_RESULT.mask) ? 1 : 0;
-        if (sub === 0 && resultFrames.length) dropResults();
-        if (sub === 1 && (resultFrames.length !== 1 || parseHeader(resultFrames[0]).fNumber !== header.fNumber - 1)) {
-          dropResults();
+        if (sub === 0) {
+          pending.first = {
+            frame: item.frame, fNumber: header.fNumber, refFrames, histogramCount: pending.histogramFrames.length,
+          };
           continue;
         }
       }
-      if (item.refFrame) {
-        refFrames.push(item.refFrame);
-        collected++;
+
+      // The closing result frame ends the measurement, complete or not.
+      const histograms = pending.histogramFrames;
+      const pairedFirst = pending.first;
+      pending.histogramFrames = [];
+      pending.first = null;
+      if (histograms.length !== expectedHistograms) {
+        this._log(`Measurement skipped: ${histograms.length} histogram frames, expected ${expectedHistograms}`);
+        continue;
       }
-      const fid = header.id & Frame.FID_MASK;
-      if (fid === Frame.FID_RESULTS) resultFrames.push(item.frame);
-      else if (fid === Frame.FID_HISTOGRAMS) histogramFrames.push(item.frame);
-      collected++;
+      if (!twoResultFrames) return { resultFrames: [item.frame], histogramFrames: histograms, refFrames };
+      // Every FIFO frame increments the frame number, so the histogram frames received between
+      // the two result sub-frames must account for the whole gap, otherwise a frame was lost.
+      const expectedFNumber = pairedFirst && pairedFirst.fNumber + histograms.length - pairedFirst.histogramCount + 1;
+      if (pairedFirst && header.fNumber === expectedFNumber) {
+        return {
+          resultFrames: [pairedFirst.frame, item.frame],
+          histogramFrames: histograms,
+          refFrames: [...pairedFirst.refFrames, ...refFrames],
+        };
+      }
+      this._log(`Measurement skipped: result sub-frame ${header.fNumber} has no matching sub-frame 0`
+        + (pairedFirst ? ` (got ${pairedFirst.fNumber}, expected ${expectedFNumber})` : ''));
     }
-    return { resultFrames, histogramFrames, refFrames };
   }
 }
 
@@ -4488,7 +4536,7 @@ const EVM_H5_FILTERS = [
   { usbVendorId: 0x1325 },
 ];
 
-const DEFAULT_HEX_URL = '../tmf8829/hex/tmf8829_application.hex';
+const DEFAULT_HEX_URL = 'hex/tmf8829_application.hex';
 const DEFAULT_BAUD_RATE = 115200;
 const DEFAULT_USE_FIFO_DOWNLOAD = true;
 const DEFAULT_VERIFY_DOWNLOAD = false;

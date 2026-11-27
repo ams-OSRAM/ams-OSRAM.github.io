@@ -74,10 +74,8 @@ The unbundled sources need a server because Chrome blocks ES modules and
 python -m http.server 8000
 ```
 
-Then open <http://localhost:8000/webapp/>. Serving from the repository root lets
-the page fetch the firmware from `tmf8829/hex/tmf8829_application.hex`; if you
-serve the `webapp` folder on its own, pick the hex file manually in the *Sensor
-firmware* panel.
+Then open <http://localhost:8000/source/tmf8829/web_gui/>. The page fetches the
+firmware from `hex/tmf8829_application.hex` next to `index.html`.
 
 [offline_unit_tests.html](offline_unit_tests.html) verifies the CRC, the frame
 size formulas and the Intel HEX parser against the shipped firmware image.
@@ -229,6 +227,12 @@ are split into several messages that share a single chip select assertion, so
 large histogram frames can be read in one SPI transaction.
 
 ## Changelog
+
+### V1.6
+
+* Fixed a logging bug, which logged 48x16 instead of 48x32 frames
+  if histograms have been enabled.
+* Updated unit tests, which failed on moved hex file location.
 
 ### V1.5
 

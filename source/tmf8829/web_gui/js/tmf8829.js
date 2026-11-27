@@ -9,7 +9,7 @@ import {
   AppCmd, AppReg, AppStat, Bl, CfgReg, Enable, Frame, FpMode, HostReg, Reset, ResultFormat,
 } from './registers.js';
 import {
-  framesPerMeasurement, histogramFrameDataSize, parseHeader, parseFooter, resultFrameDataSize,
+  histogramFrameDataSize, numberOfHistogramFrames, parseHeader, parseFooter, resultFrameDataSize,
 } from './frames.js';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -364,6 +364,7 @@ export class Tmf8829 {
   }
 
   async startMeasure() {
+    this.pendingMeasurement = null;
     await this.clearIntStatus(0xff);
     await this.enableInt(Frame.INT_RESULTS | Frame.INT_HISTOGRAMS);
     return this.sendCommand(AppCmd.MEASURE);
@@ -420,22 +421,24 @@ export class Tmf8829 {
     return { frame, refFrame };
   }
 
-  /** Collects all frames that belong to one complete measurement. */
+  /**
+   * Collects all frames that belong to one complete measurement. The histogram frames
+   * received since the previous measurement are only returned together with the closing
+   * result frame when their count matches the configuration, otherwise the measurement is
+   * skipped. This keeps the histogram frames aligned with the measurement even if a frame
+   * is lost or the read starts in the middle of a measurement. Frames already received are
+   * kept across calls, so a timeout does not discard a measurement that is still arriving.
+   */
   async readMeasurement({ timeoutMs = 5000, shouldStop = null } = {}) {
-    const expected = framesPerMeasurement(this.cfgFpMode, this.cfgHistograms, this.cfgDualMode, this.cfgRefFrame);
-    const resultFrames = [];
-    const histogramFrames = [];
-    const refFrames = [];
-    let collected = 0;
-    const deadline = performance.now() + timeoutMs;
     const twoResultFrames = this.cfgFpMode > FpMode.M16x16;
-    const dropResults = () => {
-      collected -= resultFrames.length + refFrames.length;
-      resultFrames.length = 0;
-      refFrames.length = 0;
-    };
+    const expectedHistograms = this.cfgHistograms
+      ? numberOfHistogramFrames(this.cfgFpMode, this.cfgDualMode)
+      : 0;
+    this.pendingMeasurement ??= { histogramFrames: [], first: null };
+    const pending = this.pendingMeasurement;
+    let deadline = performance.now() + timeoutMs;
 
-    while (collected < expected) {
+    for (;;) {
       if (shouldStop?.()) return null;
       const item = await this.readFrameIfAvailable();
       if (!item) {
@@ -443,25 +446,49 @@ export class Tmf8829 {
         await sleep(1);
         continue;
       }
+      deadline = performance.now() + timeoutMs;
       const header = parseHeader(item.frame);
-      if (twoResultFrames && (header.id & Frame.FID_MASK) === Frame.FID_RESULTS) {
+      const fid = header.id & Frame.FID_MASK;
+      if (fid === Frame.FID_HISTOGRAMS) {
+        pending.histogramFrames.push(item.frame);
+        continue;
+      }
+      if (fid !== Frame.FID_RESULTS) continue;
+
+      const refFrames = item.refFrame ? [item.refFrame] : [];
+      if (twoResultFrames) {
         // A lost sub-frame would pair halves of different measurements (or swap rows), so resync on sub-frame 0.
         const sub = (header.layout & ResultFormat.SUB_RESULT.mask) ? 1 : 0;
-        if (sub === 0 && resultFrames.length) dropResults();
-        if (sub === 1 && (resultFrames.length !== 1 || parseHeader(resultFrames[0]).fNumber !== header.fNumber - 1)) {
-          dropResults();
+        if (sub === 0) {
+          pending.first = {
+            frame: item.frame, fNumber: header.fNumber, refFrames, histogramCount: pending.histogramFrames.length,
+          };
           continue;
         }
       }
-      if (item.refFrame) {
-        refFrames.push(item.refFrame);
-        collected++;
+
+      // The closing result frame ends the measurement, complete or not.
+      const histograms = pending.histogramFrames;
+      const pairedFirst = pending.first;
+      pending.histogramFrames = [];
+      pending.first = null;
+      if (histograms.length !== expectedHistograms) {
+        this._log(`Measurement skipped: ${histograms.length} histogram frames, expected ${expectedHistograms}`);
+        continue;
       }
-      const fid = header.id & Frame.FID_MASK;
-      if (fid === Frame.FID_RESULTS) resultFrames.push(item.frame);
-      else if (fid === Frame.FID_HISTOGRAMS) histogramFrames.push(item.frame);
-      collected++;
+      if (!twoResultFrames) return { resultFrames: [item.frame], histogramFrames: histograms, refFrames };
+      // Every FIFO frame increments the frame number, so the histogram frames received between
+      // the two result sub-frames must account for the whole gap, otherwise a frame was lost.
+      const expectedFNumber = pairedFirst && pairedFirst.fNumber + histograms.length - pairedFirst.histogramCount + 1;
+      if (pairedFirst && header.fNumber === expectedFNumber) {
+        return {
+          resultFrames: [pairedFirst.frame, item.frame],
+          histogramFrames: histograms,
+          refFrames: [...pairedFirst.refFrames, ...refFrames],
+        };
+      }
+      this._log(`Measurement skipped: result sub-frame ${header.fNumber} has no matching sub-frame 0`
+        + (pairedFirst ? ` (got ${pairedFirst.fNumber}, expected ${expectedFNumber})` : ''));
     }
-    return { resultFrames, histogramFrames, refFrames };
   }
 }

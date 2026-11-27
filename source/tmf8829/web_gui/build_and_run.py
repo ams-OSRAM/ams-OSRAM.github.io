@@ -106,7 +106,7 @@ def main() -> None:
         f"<style>\n{css}\n</style>",
     )
     html = html.replace(
-        "By default <code>tmf8829/hex/tmf8829_application.hex</code> is fetched from the server.",
+        "By default <code>hex/tmf8829_application.hex</code> is fetched from the server.",
         "<code>tmf8829_application.hex</code> is embedded in this page; select a file only to override it.",
     )
     html = html.replace(

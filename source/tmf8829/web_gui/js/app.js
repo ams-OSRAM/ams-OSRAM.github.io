@@ -17,7 +17,7 @@ const EVM_H5_FILTERS = [
   { usbVendorId: 0x1325 },
 ];
 
-const DEFAULT_HEX_URL = '../tmf8829/hex/tmf8829_application.hex';
+const DEFAULT_HEX_URL = 'hex/tmf8829_application.hex';
 const DEFAULT_BAUD_RATE = 115200;
 const DEFAULT_USE_FIFO_DOWNLOAD = true;
 const DEFAULT_VERIFY_DOWNLOAD = false;
